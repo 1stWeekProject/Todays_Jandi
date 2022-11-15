@@ -1,0 +1,15 @@
+* {
+    font-family: 'Noto Sans KR', sans-serif;
+}
+
+body {
+    margin: 0;
+}
+
+.header {
+    font-size: 30px;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background-color: #C5F8B3;
+}
