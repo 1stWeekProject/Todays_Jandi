@@ -92,8 +92,5 @@ def api_duplicate():
     else:
         return jsonify({'result': 'fail', 'msg': '사용하셔도 좋은 아이디입니다.'})
 
-
-
-
 if __name__ == '__main__':
     app.run('0.0.0.0', port=5000, debug=True)
