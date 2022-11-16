@@ -33,12 +33,22 @@ def home():
 
 @app.route("/teams/withdrawl", methods=["DELETE"])
 def team_withdrwal():
+    token_receive = request.cookies.get('mytoken')
+    try:
+        payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+        user_id = payload['id']
+    except jwt.ExpiredSignatureError:
+        return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
+    except jwt.exceptions.DecodeError:
+        return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+
+    login_user = db.members.find_one({'id': user_id}, {'_id': False})
+    login_user_nickname = login_user['nickname']
+
     team_id = request.form['team_id']
-    print("팀 멤버 삭제", team_id)
-    user_id = 1
     db.teams.update_one(
         {'num': int(team_id)},  # db에 있는 type 확인!
-        {'$pull': {"member": {"num": str(user_id)}}})  # db에 있는 type 확인
+        {'$pull': {"members": {"$in": [login_user_nickname]}}})  # db에 있는 type 확인
 
     return "ok"
 
