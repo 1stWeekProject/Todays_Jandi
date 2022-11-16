@@ -3,6 +3,7 @@ from pymongo import MongoClient
 import requests
 from bs4 import BeautifulSoup
 import datetime
+from datetime import date, timedelta
 import certifi
 import jwt
 import hashlib
@@ -99,11 +100,15 @@ def get_daily_commit_count(github_nickname):
     request_url = 'https://github.com/{}'.format(github_nickname)
     data = requests.get(request_url, headers=headers)
     soup = BeautifulSoup(data.text, 'html.parser')
+    print(soup)
 
     today = datetime.datetime.today().strftime("%Y-%m-%d")
+    print(today)
+    print(date.today())
     daily_commit = soup.select_one("rect[data-date='{}']".format(today))
     if daily_commit is None:
-        raise ValueError('잘못된 Github nickname')
+        yesterday = date.today() - timedelta(1)
+        daily_commit = soup.select_one("rect[data-date='{}']".format(yesterday))
 
     daily_commit_count = daily_commit['data-count']
     return daily_commit_count
