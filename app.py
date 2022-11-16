@@ -88,10 +88,16 @@ def api_register():
     pw_receive = request.form['pw_give']
     github_receive = request.form['github_give']
     nickname_receive = request.form['nickname_give']
+    group = ""
+    id_list = list(db.jandi.find({}, {'_id': False}))
+    num = len(id_list)
+
+
 
     pw_hash = hashlib.sha256(pw_receive.encode('utf-8')).hexdigest()
     # 비밀번호를 해쉬로 처리합니다. 암호화하여 저장, 단방향 암호화
-    db.members.insert_one({'id': id_receive, 'pw': pw_hash, 'github': github_receive, 'nickname': nickname_receive})
+    db.jandi.insert_one({'id': id_receive, 'pw': pw_hash, 'github' : github_receive ,'nickname': nickname_receive, 'group' : group,'num' : num})
+
 
     return jsonify({'result': 'success'})
 
@@ -105,8 +111,8 @@ def api_login():
     pw_hash = hashlib.sha256(pw_receive.encode('utf-8')).hexdigest()
 
     # id, 암호화된pw을 가지고 해당 유저를 찾습니다.
-    result = db.members.find_one({'id': id_receive, 'pw': pw_hash})
-    print(result)
+
+    result = db.jandi.find_one({'id': id_receive, 'pw': pw_hash})
 
     # 찾으면 JWT 토큰을 만들어 발급합니다.
     if result is not None:
