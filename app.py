@@ -1,8 +1,10 @@
-from flask import Flask, render_template, request, jsonify
+import datetime
+
+from flask import Flask, render_template, request
 from pymongo import MongoClient
 import requests
 from bs4 import BeautifulSoup
-from datetime import date
+from datetime import datetime
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'}
@@ -56,7 +58,9 @@ def get_daily_commit_count(github_nickname):
     data = requests.get(request_url, headers=headers)
     soup = BeautifulSoup(data.text, 'html.parser')
 
-    today = date.today()
+    today = datetime.today().strftime("%Y-%m-%d")
+    print(today)
+
     daily_commit = soup.select_one("rect[data-date='{}']".format(today))
     if daily_commit is None:
         raise ValueError('잘못된 Github nickname')
