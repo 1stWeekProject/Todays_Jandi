@@ -41,7 +41,6 @@ def team_withdrwal():
 
     return "ok"
 
-
 @app.route("/teams/grasses/<int:team_id>", methods=["GET"])
 def team_info(team_id):
     team = db.teams.find_one({'num': team_id})
@@ -229,7 +228,7 @@ def join_private_team() :
         # 이제 선택한 방으로 이동
         return jsonify({'result': 'success', 'msg': '성공'})
     else:
-        return jsonify({'result': 'success', 'msg': '잘못된 비밀번호 입니다.'})
+        return jsonify({'result': 'fail', 'msg': '잘못된 비밀번호 입니다.'})
 
 
 
@@ -260,6 +259,7 @@ def join_public_team() :
     return jsonify({'result': 'success', 'msg': '성공'})
 
 # 로그아웃 추가 필요
+
 
 if __name__ == '__main__':
     app.run('0.0.0.0', port=8080, debug=True)
