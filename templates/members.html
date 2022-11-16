@@ -249,6 +249,9 @@
 
     </style>
     <script>
+        //                                 //
+        //  ** DOM Element 제어하는 함수 자리 //
+        //                                 //
         function call_join(){
              let join = document.getElementById('join');
             join.style.display = "block";
@@ -256,7 +259,7 @@
             overlay.style.display = "block";
 
         }
-
+      //join(회원가입 창)과 focus를 위해 만든 overlay를 출력합니다.
         function close_join(){
                let join = document.getElementById('join');
                             join.style.display = "none";
@@ -265,6 +268,12 @@
 
         }
 
+    //join(회원가입 창)과 focus를 위해 만든 overlay를 닫습니다.
+
+        //                                 //
+        //    POST /GET -AJAX CALL 함수 자리 //
+        //                                 //
+        //                                 //
          function register() {
 
                 $.ajax({
@@ -279,20 +288,14 @@
 
                     success: function (response) {
                         if (response['result'] == 'success') {
-                            alert('회원가입이 완료되었습니다.')
-                            let join = document.getElementById('join');
-                            join.style.display = "none";
-                            let overlay = document.getElementById('overlay');
-                            overlay.style.display = "none   ";
-
-
+                            alert('회원가입이 완료되었습니다.');
+                            init();
+                            close_join();
                         } else {
                             alert(response['msg'])
                         }
                     }
                 })
-
-
         }
 
         function login(){
@@ -305,7 +308,6 @@
                             // 로그인이 정상적으로 되면, 토큰을 받아옵니다.
                             // 이 토큰을 mytoken이라는 키 값으로 쿠키에 저장합니다.
                             $.cookie('mytoken', response['token']);
-
                             alert('로그인 완료!')
 
                         } else {
@@ -315,21 +317,54 @@
                     }
                 })
         }
-// 정규화 function
-        //아 이거  돌면 안될것 같은데 필드값 onchane가 변화하는 시점에서 어떻게할까..
 
 
-        $(function disable() {
-            let btn_join = document.getElementById('btn_join');
-            btn_join.disable = true;
-            });//join 버튼을 비활성화 합니다.
-        $(function able(){
-            let btn_join = document.getElementById('btn_join');
-               btn_join.disable = false;
-        });// join 버튼을 활성화 합니다.
+        //                                 //
+        //    회원가입 제한용        함수 자리 //
+        //                                 //
+        //                                 //
 
+        // 아 이거 전역변수 boolean 타입 하나 주고 그걸로 state 파악해서
+        // 해당 칸 blur할때 마다 전역변수에 return 해서 마지막 에 true or false 로 작성했으면 좋았을텐데
+        // 훨씬더 가독성 있는 코드가 되었을 것 같은데 .. 왜 그생각을 못했을까.. 내가 너무 밉다.
+        // 조진것 같다 시말서 각이다. 지금 와서 다시짜긴 그른것 같다.
+        // 생각하고 코딩하는 버릇을 길러야할것 같다 이게 시장판인지 스크립트인지 이젠 잘 모르겟다
 
-     // password를 비교하여 에러메세지를 설정합니다. pw_check에서 blur 할때 실행합니다.
+        function init(){
+         let r_id = document.getElementById('r_id');
+         let r_pw = document.getElementById('r_pw');
+         let pw_check = document.getElementById('pw_check');
+         let git_id = document.getElementById('git_id');
+         let nickname = document.getElementById('nickname');
+          let btn_dupli = document.getElementById('duplicate');
+          let err_span = document.getElementById('err_span');
+
+         r_id.value = null;
+         r_pw.value = null;
+         pw_check.value = null;
+         git_id.value =  null;
+         nickname.value = null;
+         err_span.value = null;
+    console.log("init 실행되었습니다1.")
+          able();
+            btn_dupli.style.display ="inline-block";
+            console.log("init 실행되었습니다2.")
+        }
+
+        // 회원가입창 초기화 용입니다.
+        function disable() {
+            let btn_reg = document.getElementById('btn_reg');
+            btn_reg.style.display = "none"
+            //btn_join(회원가입)버튼을 비활성화 합니다.
+            console.log("disable")
+        }
+        function able() {
+            let btn_reg = document.getElementById('btn_reg');
+           btn_reg.style.display = "inline-block"
+            //btn_join(회원가입)버튼을 활성화 합니다.
+            console.log("able")
+        }
+
         function duplicate(){
             $.ajax({
                     type: "POST",
@@ -339,8 +374,10 @@
                         if (response['result'] == 'success') {
                             // 이미 가입한 아이디가 있다면 result를 success로 받아옵니다.
                             // success를 받아올경우 중복 이라는 err 메세지를 담긴 msg를 alert합니다.
+                              disable();
+
                             alert(response['msg']);
-                            disable();
+
                         } else {
                             // 가입한 아이디가 있다면 result를 fail로 받아옵니다.
                             // fail을 받아올 경우 사용하셔되된다는 msg를 alert합니다.
@@ -352,37 +389,63 @@
                     }
                 })
         }
+     // 중복아이디를 찾는 함수입니다. ajax를 통해 post 요청으로 서버측에 보낸뒤 서버측에
+        // db call > findone을 통해 result를 가져오는지 판단한후 상태에따른 msg를 반환하여 alert 처리 쏩니다
 
-        // display : none이기 때문에 addListner에서 DOMElement가 Read되지 않아 callback에 문제가 있습니다.
-        function compare() {
+        //추가수정) 사용자가 다시 id를 변경할떄 를 제어를 안했습니다.
+
+        function id_change(){
+              let btn_dupli = document.getElementById('duplicate');
+            btn_dupli.style.display ="inline-block";
+            disable();
+            //id 값에 onchange event를 추가하여 초기화 하면 될것같습니다.
+
+        }
+
+
+function compare() {
             let r_pw = document.getElementById('r_pw');
             let pw_check = document.getElementById('pw_check');
             let err_span = document.getElementById('err_span');
 
-            console.log(r_pw)
-            console.log(pw_check+"pw_check")
-            if (r_pw == pw_check) {
+            console.log(r_pw.value)
+            console.log(pw_check.value+"pw_check")
+            if (r_pw.value == pw_check.value) {
 
                 err_span.style.color = "blue";
                 err_span.innerText = "OK";
+                able();
 
-            } else if (pw_check == "" || pw_check == null) {
+            } else if (pw_check.value == null || r_pw.value == null) {
                 err_span.innerText = "";
             } else {
                 err_span.innerText = "입력한 비밀번호와 다릅니다."
                 err_span.style.color = "red";
+                disable();
 
             }
         }
-        // compare가 실행되는 시점이 document가 읽어온 다음이면 어떻게 될까요 ??
+        // password를 비교하여 에러메세지를 설정합니다. pw_check에서 blur 할때 실행합니다.
+        // display : none이기 때문에 addListner에서 DOMElement가 Read되지 않아 callback에 문제가 있습니다.
+        // solution : 스크립트 마지막단에 document.ready 영역에서 함수를 불러서 처리하였습니다.
+        //            또는 해당 join box의 css.display =none 이 아닌 visibillity를 주어 해결할수 있으나
+        // 이방법은 기존 css 를 건들이고 바디단에 z-index를 설정하기때문에 개인적으로 가독성이 떨어져 전자로 처리하였습니다.
 
-       $(document).ready(function(){
+
+        $(document).ready(function () {
             let r_pw = document.getElementById('r_pw');
-    let pw_check = document.getElementById("pw_check");
-    pw_check.addEventListener("blur",function(event){
-        compare();
-    })
-});
+            r_pw.addEventListener("blur", function (event) {
+                compare();
+            })
+            let pw_check = document.getElementById("pw_check");
+            pw_check.addEventListener("blur", function (event) {
+                compare();
+            })
+            let r_id = document.getElementById('r_id');
+           r_id.addEventListener("change", function (event) {
+                id_change();
+            })
+        });
 
     </script>
 </head>
