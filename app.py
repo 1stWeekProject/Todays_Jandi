@@ -1,30 +1,83 @@
-from flask import Flask, render_template, jsonify, request, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify
+from pymongo import MongoClient
+import requests
+from bs4 import BeautifulSoup
+import datetime
+import certifi
+import jwt
+import hashlib
+
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'}
+
+ca = certifi.where()
+client = MongoClient("mongodb+srv://test:1111@cluster0.0euf5qj.mongodb.net/cluster0?retryWrites=true&w=majority",
+                     tlsCAFile=ca)
+db = client.TodaysJandi
+
+SECRET_KEY = 'TODAYJANDI'
 
 app = Flask(__name__)
 
-from pymongo import MongoClient
-import certifi
-
-ca=certifi.where()
-
-client = MongoClient("mongodb+srv://test:sparta@cluster0.clu05af.mongodb.net/Cluster0?retryWrites=true&w=majority", tlsCAFile=ca)
-db = client.dbsparta
-
-SECRET_KEY ='TODAYJANDI'
-
-# JWT 패키지를 사용합니다. (설치해야할 패키지 이름: PyJWT)
-import jwt
-
-# 토큰에 만료시간을 줘야하기 때문에, datetime 모듈도 사용합니다.
-import datetime
-
-# 회원가입 시엔, 비밀번호를 암호화하여 DB에 저장해두는 게 좋습니다.
-# 그렇지 않으면, 개발자(=나)가 회원들의 비밀번호를 볼 수 있으니까요.^^;
-import hashlib
 
 @app.route('/')
 def home():
     return render_template('members.html')
+
+
+@app.route("/teams/withdrawl", methods=["DELETE"])
+def team_withdrwal():
+    team_id = request.form['team_id']
+    print("팀 멤버 삭제", team_id)
+    user_id = 1
+    db.teams.update_one(
+        {'num': int(team_id)},  # db에 있는 type 확인!
+        {'$pull': {"member": {"num": str(user_id)}}})  # db에 있는 type 확인
+
+    return "ok"
+
+
+@app.route("/teams/grasses/<int:team_id>", methods=["GET"])
+def team_info(team_id):
+    team = db.teams.find_one({'num': team_id})
+
+    team_members = []
+    for member_nickname in team['members']:
+        team_member = db.members.find_one({'nickname': member_nickname}, {'id': False})
+        team_members.append(team_member)
+
+    GITHUB_NICKNAME_KEY = 'github'
+    github_nicknames = [i[GITHUB_NICKNAME_KEY] for i in team_members]
+    member_commit_counts = []
+    for github_nickname in github_nicknames:
+        commit_counts = get_daily_commit_count(github_nickname)
+        member_commit_counts.append(commit_counts)
+
+    MEMBER_NICKNAME_KEY = 'nickname'
+    member_nicknames = [i[MEMBER_NICKNAME_KEY] for i in team_members]
+
+    member_infos = list(zip(member_nicknames, member_commit_counts, github_nicknames))
+
+    return render_template('team.html',
+                           member_infos=member_infos,
+                           team_id=team_id)
+
+
+def get_daily_commit_count(github_nickname):
+    request_url = 'https://github.com/{}'.format(github_nickname)
+    data = requests.get(request_url, headers=headers)
+    soup = BeautifulSoup(data.text, 'html.parser')
+
+    today = datetime.datetime.today().strftime("%Y-%m-%d")
+    print(today)
+
+    daily_commit = soup.select_one("rect[data-date='{}']".format(today))
+    if daily_commit is None:
+        raise ValueError('잘못된 Github nickname')
+
+    daily_commit_count = daily_commit['data-count']
+    return daily_commit_count
+
 
 # [회원가입 API]
 # id, pw, nickname을 받아서, mongoDB에 저장합니다.
@@ -37,10 +90,11 @@ def api_register():
     nickname_receive = request.form['nickname_give']
 
     pw_hash = hashlib.sha256(pw_receive.encode('utf-8')).hexdigest()
-# 비밀번호를 해쉬로 처리합니다. 암호화하여 저장, 단방향 암호화
-    db.jandi.insert_one({'id': id_receive, 'pw': pw_hash, 'github' : github_receive ,'nickname': nickname_receive})
+    # 비밀번호를 해쉬로 처리합니다. 암호화하여 저장, 단방향 암호화
+    db.members.insert_one({'id': id_receive, 'pw': pw_hash, 'github': github_receive, 'nickname': nickname_receive})
 
     return jsonify({'result': 'success'})
+
 
 @app.route('/members/login', methods=['POST'])
 def api_login():
@@ -51,7 +105,7 @@ def api_login():
     pw_hash = hashlib.sha256(pw_receive.encode('utf-8')).hexdigest()
 
     # id, 암호화된pw을 가지고 해당 유저를 찾습니다.
-    result = db.jandi.find_one({'id': id_receive, 'pw': pw_hash})
+    result = db.members.find_one({'id': id_receive, 'pw': pw_hash})
     print(result)
 
     # 찾으면 JWT 토큰을 만들어 발급합니다.
@@ -72,11 +126,12 @@ def api_login():
     else:
         return jsonify({'result': 'fail', 'msg': '아이디/비밀번호가 일치하지 않습니다.'})
 
+
 @app.route('/members/duplicate', methods=["POST"])
 def api_duplicate():
     id_receive = request.form['id_give']
     # id를 가져와 동일한 id를 찾습니다. 찾습니다.
-    result = db.jandi.find_one({'id': id_receive})
+    result = db.members.find_one({'id': id_receive})
     print(result)
 
     # 찾으면 JWT 토큰을 만들어 발급합니다.
@@ -91,15 +146,19 @@ def api_duplicate():
 def serch_team():
     return render_template('search_team.html')
 
-team_list_client = MongoClient("mongodb+srv://test:1111@cluster0.0euf5qj.mongodb.net/cluster0?retryWrites=true&w=majority")
+
+team_list_client = MongoClient(
+    "mongodb+srv://test:1111@cluster0.0euf5qj.mongodb.net/cluster0?retryWrites=true&w=majority")
 team_list_db = team_list_client.bs4db
+
 
 # 현재 생성된 팀 정보들을 가져온다.
 @app.route('/teams/get', methods=["GET"])
 def get_teams_info():
     # 토큰 확인은 일단 패스
-    team_list = list(team_list_db.jandiTeams.find({}, {'_id': False}))
+    team_list = list(db.teams.find({}, {'_id': False}))
     return jsonify({'teams': team_list})
+
 
 # 팀을 생성한다.
 @app.route('/teams/create', methods=["POST"])
@@ -107,20 +166,21 @@ def create_team():
     access_receive = request.form['access_give']
     teamName_receive = request.form['TeamName_give']
     teamPassword_receive = request.form['TeamPassword_give']
-    members_receive = ["user1"] # 추후 만든 사람 닉네임으로 바꾸는 작업 해야됨
+    members_receive = ["hanju"]  # 추후 만든 사람 닉네임으로 바꾸는 작업 해야됨
 
-    team_list = list(team_list_db.jandiTeams.find({}, {'_id': False}))
+    team_list = list(db.teams.find({}, {'_id': False}))
     num = 0 if (len(team_list) == 0) else team_list[(len(team_list)) - 1]['num'] + 1
 
     doc = {
         'num': num,
-        'access' : access_receive,
+        'access': access_receive,
         'TeamName': teamName_receive,
         'TeamPassword': teamPassword_receive,
         'members': members_receive
     }
-    team_list_db.jandiTeams.insert_one(doc)
+    db.teams.insert_one(doc)
     return jsonify({'msg': '팀 생성 성공!'})
+
 
 # 팀에 참가한다.
 # @app.route('teams/join', methods=['POST'])

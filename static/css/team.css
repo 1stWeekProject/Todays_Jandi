@@ -1,0 +1,58 @@
+main {
+    width: 80%;
+    height: 100%;
+    margin: 0 auto;
+}
+
+.grass {
+    margin-top: 30px;
+    margin-bottom: 30px;
+}
+
+.user {
+    position: relative;
+    margin: 10px;
+}
+
+.user-info {
+    position: relative;
+    display: inline-block;
+    font-size: 40px;
+    font-weight: bold;
+}
+
+.commit-info {
+    float: right;
+    position: relative;
+    display: inline-block;
+    vertical-align: baseline;
+    font-size: 20px;
+}
+
+.grass-info {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.user-grass {
+    width: 100%;
+}
+
+.button {
+    background-color: white; /* Green */
+    border: 2px solid #f44336;
+    color: #f44336;
+    padding: 16px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    transition-duration: 0.4s;
+    cursor: pointer;
+}
+
+.button:hover {
+    background-color: #f44336;
+    color: white;
+}
