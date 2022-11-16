@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!--Noto Sans font-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR&display=swap" rel="stylesheet">
+
+    <meta charset="UTF-8">
+    <title>팀 참가하기</title>
+    <style>
+        * {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        body {
+            margin: 0;
+        }
+        .header {
+            font-size: 30px;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            background-color: #C5F8B3;
+        }
+        .teamList {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .teamInfo {
+            width: 70%;
+            height: 120px;
+            background-color: #8A7338;
+            font-size: 18px;
+            color: white;
+            border-radius: 10px;
+            margin-top: 40px;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .teamJoinBtn {
+            background-color: #35D34E;
+            color: white;
+            width: 200px;
+            height: 50px;
+            margin: 20px 10px 20px 0px;
+            border-radius: 10px
+        }
+        .createTeamBtn {
+            border: 0;
+            outline: 0;
+            background-color: #35D34E;
+            color: white;
+            width: 300px;
+            height: 60px;
+            border-radius: 10px;
+            margin-top: 40px;
+        }
+
+        /*modal 영역*/
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+
+            /* 숨기기 */
+            z-index: -1;
+            opacity: 0;
+        }
+
+        .show {
+            opacity: 1;
+            z-index: 1000;
+            transition: all .5s;
+        }
+
+        .window {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #ffffff;
+            box-shadow: 0 2px 7px rgba(0, 0, 0, 0.3);
+
+            /* 모달 크기 */
+            width: 500px;
+            height: 380px;
+
+            /* 초기에 약간 아래에 배치 */
+            transform: translate(-50%, -40%);
+        }
+
+        .show .popup {
+            transform: translate(-50%, -50%);
+            transition: all .5s;
+        }
+
+        .modalItems {
+            margin-top: 20px;
+        }
+
+        .modalBtn {
+            width: 220px;
+            height: 60px;
+            overflow: hidden;
+            border: 0;
+            outline: 0;
+            color: white;
+        }
+    </style>
+
+    <script>
+        $(document).ready(function () {
+            show_teams();
+        });
+
+        function show_teams() {
+            $.ajax({
+                type: 'GET',
+                url: '/teams/get',
+                data: {},
+                success: function (response) {
+                    let rows = response['teams']
+                    console.log(rows)
+                    for (let i = 0; i < rows.length; i++) {
+                        let team_name = rows[i]['TeamName'];
+                        let team_password = rows[i]['TeamPassword'];
+                        let access = (rows[i]['access'] == "public") ? "PublicTeamImg" : "privateTeamImg";
+                        let members = rows[i]['members'].length;
+
+                        let temp_html = `<div class="teamInfo">
+                                            <img src="/static/${access}.png">
+                                            <p style="word-break: normal">${team_name}</p>
+                                            <p>${members}명</p>
+                                            <button class="teamJoinBtn" onclick="show_join_pop_up()">팀 참가하기</button>
+                                        </div>`
+                        $('.teamList').append(temp_html);
+                    }
+                }
+            })
+        }
+
+        function show_pop_up () {
+            // document.querySelector(".background").className = "background show";
+            document.getElementById("create_team_popup").className = "background show";
+        }
+
+        function close_pop_up () {
+            document.getElementById("create_team_popup").className = "background";
+        }
+
+        function make_public() {
+            // 230
+            let password = document.getElementById("password");
+            let passwordCheck = document.getElementById("passwordCheck");
+            password.style.display = "none"
+            passwordCheck.style.display = "none"
+        }
+
+        function make_private() {
+            // 380
+            let password = document.getElementById("password");
+            let passwordCheck = document.getElementById("passwordCheck");
+            password.style.display = "block"
+            passwordCheck.style.display = "block"
+        }
+
+        function save_team() {
+            var access = $('input[name="access"]:checked').val();
+            let teamName = $('#teamName').val();
+            let teamPassword = (access == 'public') ? "" : $('#passwordForm').val();
+            let teamPasswordCheck = (access == 'public') ? "" : $('#passwordCheckForm').val();
+
+            if (teamPassword == teamPasswordCheck) {
+                $.ajax({
+                type: 'POST',
+                url: '/teams/create',
+                data: {access_give: access, TeamName_give: teamName, TeamPassword_give: teamPassword},
+                success: function (response) {
+                    alert(response['msg'])
+                    window.location.reload();
+                }
+            });
+            } else { // 비밀번호를 잘못입력했는지 확인
+                alert("비밀번호를 확인해 주세요!")
+            }
+        }
+
+        function show_join_pop_up () {
+            document.getElementById("join_team_popup").className = "background show";
+        }
+
+        function close_join_pop_up () {
+            document.getElementById("join_team_popup").className = "background";
+        }
+
+    </script>
+</head>
+<body>
+<div class="header">
+    <img src="/static/Jandi-logo.png" style="margin-right: 30px">
+    <h1>오늘의 잔디</h1>
+</div>
+
+<div class="teamList">
+</div>
+<div style="display: flex; justify-content: center">
+    <button class="createTeamBtn" onclick="show_pop_up()">직접 팀을 만들어 보세요!</button>
+</div>
+
+
+<!-- modal 영역 -->
+<div class="background" id="create_team_popup">
+    <div class="window">
+        <div class="popup">
+            <div style="margin: 10px 0px 0px 20px; display: flex; flex-direction: column; align-items: flex-start;">
+                <div class="modalItems">
+                    <input type="radio" onclick="make_public()" name="access" value="public" checked="checked">공개방
+                    <input type="radio" onclick="make_private()" name="access" value="private"> 비공개방
+                </div>
+
+                <div class="modalItems">
+                    <b>팀 이름</b><br>
+                    <input id="teamName" type="text" name="UserID" style="width: 400px" placeholder="팀 이름을 입력해주세요"><br>
+                </div>
+
+                <div class="modalItems" id="password" style="display: none">
+                    <b>비밀번호</b><br>
+                    <input id = "passwordForm"type="password" name="UserID" style="width: 400px" placeholder="비밀번호"><br>
+                </div>
+
+                <div class="modalItems" id="passwordCheck" style="display: none">
+                    <b>비밀번호 재확인</b><br>
+                    <input id="passwordCheckForm" type="password" name="UserID" style="width: 400px" placeholder="비밀번호 확인"><br>
+                </div>
+
+                <div class="modalItems">
+                    <button class="modalBtn" style="background-color: #35D34E" onclick="save_team()">팀 만들기!</button>
+                    <button class="modalBtn" style="background-color: #033821" onclick="close_pop_up()">취소</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="background" id="join_team_popup">
+    <div class="window">
+        <div class="popup" style="width: 500px; height: 230px">
+            <div>
+                <div style="height: 100px; background-color: #C5F8B3; display: flex; justify-content: center; align-items: center;">
+                    <p style="font-size: 25px">
+                        비밀번호를 입력해주세요
+                    </p>
+                </div>
+                <div style="height: 100px;display: flex; flex-direction: column; justify-content: center; align-items : center;">
+                    <input id="join_password" type="password" name="UserID" style="margin-top: 15px; height: 30px; width: 400px" placeholder="비밀번호">
+                    <div style="width: 300px; margin-top: 5px; display: flex; flex-direction: row; justify-content: space-between">
+                        <button style="outline: 0; border-radius: 10px; height: 30px; width: 120px; border: 0; color: white; background-color: #35D34E">입장하기!</button>
+                        <button onclick="close_join_pop_up()" style="outline: 0; border-radius: 10px; height: 30px; width: 120px; border: 0; color: white; background-color: orangered">취소!</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- //modal 영역 -->
+</body>
+</html>
