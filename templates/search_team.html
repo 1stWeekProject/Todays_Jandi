@@ -221,8 +221,11 @@
                 data: {team_num_give: team_num, password_give: password},
                 success: function (response) {
                     //화면 이동 메소드 추가 필요
-                    alert(response['msg']);
-                    window.location.reload();
+                    if (response['result'] == 'fail') {
+                        alert(response['msg']);
+                    } else if (response['result'] == 'success') {
+                        window.location.href = '/teams/grasses/' + team_num;
+                    }
                 }
             })
         }
@@ -237,8 +240,7 @@
                 data: {team_num_give: team_num},
                 success: function (response) {
                     // 화면이동 메소드 추가 필요
-                    alert(response['msg']);
-                    window.location.reload();
+                    window.location.href = '/teams/grasses/' + team_num;
                 }
             })
         }
