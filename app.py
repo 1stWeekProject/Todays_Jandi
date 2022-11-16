@@ -7,8 +7,8 @@ import certifi
 
 ca=certifi.where()
 
-client = MongoClient("mongodb+srv://test:sparta@cluster0.clu05af.mongodb.net/Cluster0?retryWrites=true&w=majority", tlsCAFile=ca)
-db = client.dbsparta
+client = MongoClient('mongodb+srv://test:1111@cluster0.0euf5qj.mongodb.net/cluster0?retryWrites=true&w=majority')
+db = client.TodaysJandi
 
 SECRET_KEY ='TODAYJANDI'
 
@@ -37,7 +37,7 @@ def api_register():
     nickname_receive = request.form['nickname_give']
 
     pw_hash = hashlib.sha256(pw_receive.encode('utf-8')).hexdigest()
-# 비밀번호를 해쉬로 처리합니다. 암호화하여 저장, 단방향 암호화
+    # 비밀번호를 해쉬로 처리합니다. 암호화하여 저장, 단방향 암호화
     db.jandi.insert_one({'id': id_receive, 'pw': pw_hash, 'github' : github_receive ,'nickname': nickname_receive})
 
     return jsonify({'result': 'success'})
@@ -87,18 +87,16 @@ def api_duplicate():
         return jsonify({'result': 'fail', 'msg': '사용하셔도 좋은 아이디입니다.'})
 
 
-@app.route('/serch_team')
+@app.route('/search_team')
 def serch_team():
     return render_template('search_team.html')
 
-team_list_client = MongoClient("mongodb+srv://test:1111@cluster0.0euf5qj.mongodb.net/cluster0?retryWrites=true&w=majority")
-team_list_db = team_list_client.bs4db
 
 # 현재 생성된 팀 정보들을 가져온다.
 @app.route('/teams/get', methods=["GET"])
 def get_teams_info():
     # 토큰 확인은 일단 패스
-    team_list = list(team_list_db.jandiTeams.find({}, {'_id': False}))
+    team_list = list(db.jandiTeams.find({}, {'_id': False}))
     return jsonify({'teams': team_list})
 
 # 팀을 생성한다.
@@ -109,7 +107,7 @@ def create_team():
     teamPassword_receive = request.form['TeamPassword_give']
     members_receive = ["user1"] # 추후 만든 사람 닉네임으로 바꾸는 작업 해야됨
 
-    team_list = list(team_list_db.jandiTeams.find({}, {'_id': False}))
+    team_list = list(db.jandiTeams.find({}, {'_id': False}))
     num = 0 if (len(team_list) == 0) else team_list[(len(team_list)) - 1]['num'] + 1
 
     doc = {
@@ -119,7 +117,7 @@ def create_team():
         'TeamPassword': teamPassword_receive,
         'members': members_receive
     }
-    team_list_db.jandiTeams.insert_one(doc)
+    db.jandiTeams.insert_one(doc)
     return jsonify({'msg': '팀 생성 성공!'})
 
 # 팀에 참가한다.
