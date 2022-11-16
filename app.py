@@ -3,6 +3,7 @@ from pymongo import MongoClient
 import requests
 from bs4 import BeautifulSoup
 import datetime
+from datetime import date, timedelta
 import certifi
 import jwt
 import hashlib
@@ -33,12 +34,22 @@ def home():
 
 @app.route("/teams/withdrawl", methods=["DELETE"])
 def team_withdrwal():
+    token_receive = request.cookies.get('mytoken')
+    try:
+        payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+        user_id = payload['id']
+    except jwt.ExpiredSignatureError:
+        return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
+    except jwt.exceptions.DecodeError:
+        return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+
+    login_user = db.members.find_one({'id': user_id}, {'_id': False})
+    login_user_nickname = login_user['nickname']
+
     team_id = request.form['team_id']
-    print("팀 멤버 삭제", team_id)
-    user_id = 1
     db.teams.update_one(
         {'num': int(team_id)},  # db에 있는 type 확인!
-        {'$pull': {"member": {"num": str(user_id)}}})  # db에 있는 type 확인
+        {'$pull': {"members": {"$in": [login_user_nickname]}}})  # db에 있는 type 확인
 
     return "ok"
 
@@ -88,11 +99,15 @@ def get_daily_commit_count(github_nickname):
     request_url = 'https://github.com/{}'.format(github_nickname)
     data = requests.get(request_url, headers=headers)
     soup = BeautifulSoup(data.text, 'html.parser')
+    print(soup)
 
     today = datetime.datetime.today().strftime("%Y-%m-%d")
+    print(today)
+    print(date.today())
     daily_commit = soup.select_one("rect[data-date='{}']".format(today))
     if daily_commit is None:
-        raise ValueError('잘못된 Github nickname')
+        yesterday = date.today() - timedelta(1)
+        daily_commit = soup.select_one("rect[data-date='{}']".format(yesterday))
 
     daily_commit_count = daily_commit['data-count']
     return daily_commit_count
