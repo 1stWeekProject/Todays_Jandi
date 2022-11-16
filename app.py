@@ -21,13 +21,7 @@ import datetime
 # 회원가입 시엔, 비밀번호를 암호화하여 DB에 저장해두는 게 좋습니다.
 # 그렇지 않으면, 개발자(=나)가 회원들의 비밀번호를 볼 수 있으니까요.^^;
 import hashlib
-#################################
-##  HTML을 주는 부분             ##
-#################################
 
-#################################
-##  로그인을 위한 API            ##
-#################################
 @app.route('/')
 def home():
     return render_template('members.html')
@@ -92,5 +86,45 @@ def api_duplicate():
     else:
         return jsonify({'result': 'fail', 'msg': '사용하셔도 좋은 아이디입니다.'})
 
+
+@app.route('/serch_team')
+def serch_team():
+    return render_template('search_team.html')
+
+team_list_client = MongoClient("mongodb+srv://test:1111@cluster0.0euf5qj.mongodb.net/cluster0?retryWrites=true&w=majority")
+team_list_db = team_list_client.bs4db
+
+# 현재 생성된 팀 정보들을 가져온다.
+@app.route('/teams/get', methods=["GET"])
+def get_teams_info():
+    # 토큰 확인은 일단 패스
+    team_list = list(team_list_db.jandiTeams.find({}, {'_id': False}))
+    return jsonify({'teams': team_list})
+
+# 팀을 생성한다.
+@app.route('/teams/create', methods=["POST"])
+def create_team():
+    access_receive = request.form['access_give']
+    teamName_receive = request.form['TeamName_give']
+    teamPassword_receive = request.form['TeamPassword_give']
+    members_receive = ["user1"] # 추후 만든 사람 닉네임으로 바꾸는 작업 해야됨
+
+    team_list = list(team_list_db.jandiTeams.find({}, {'_id': False}))
+    num = 0 if (len(team_list) == 0) else team_list[(len(team_list)) - 1]['num'] + 1
+
+    doc = {
+        'num': num,
+        'access' : access_receive,
+        'TeamName': teamName_receive,
+        'TeamPassword': teamPassword_receive,
+        'members': members_receive
+    }
+    team_list_db.jandiTeams.insert_one(doc)
+    return jsonify({'msg': '팀 생성 성공!'})
+
+# 팀에 참가한다.
+# @app.route('teams/join', methods=['POST'])
+# def join_team() :x
+
 if __name__ == '__main__':
-    app.run('0.0.0.0', port=5000, debug=True)
+    app.run('0.0.0.0', port=8080, debug=True)
