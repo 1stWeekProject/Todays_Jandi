@@ -6,19 +6,24 @@ import datetime
 import certifi
 import jwt
 import hashlib
+import json
+
+with open('config.json', 'r') as f:
+    config = json.loads(f.read())
+
+USER_AGENT = config['BS4']['USER_AGENT']
+DB_HOST = config['DATABASE']['DB_HOST']
+SECRET_KEY = config['JWT']['SECRET_KEY']
 
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'}
+    'User-Agent': USER_AGENT
+}
 
 ca = certifi.where()
-client = MongoClient("mongodb+srv://test:1111@cluster0.0euf5qj.mongodb.net/cluster0?retryWrites=true&w=majority",
-                     tlsCAFile=ca)
+client = MongoClient(DB_HOST, tlsCAFile=ca)
 db = client.TodaysJandi
 
-SECRET_KEY = 'TODAYJANDI'
-
 app = Flask(__name__)
-
 
 @app.route('/')
 def home():
@@ -89,14 +94,14 @@ def api_register():
     github_receive = request.form['github_give']
     nickname_receive = request.form['nickname_give']
     group = ""
-    id_list = list(db.jandi.find({}, {'_id': False}))
+    id_list = list(db.members.find({}, {'_id': False}))
     num = len(id_list)
 
 
 
     pw_hash = hashlib.sha256(pw_receive.encode('utf-8')).hexdigest()
     # 비밀번호를 해쉬로 처리합니다. 암호화하여 저장, 단방향 암호화
-    db.jandi.insert_one({'id': id_receive, 'pw': pw_hash, 'github' : github_receive ,'nickname': nickname_receive, 'group' : group,'num' : num})
+    db.members.insert_one({'id': id_receive, 'pw': pw_hash, 'github' : github_receive ,'nickname': nickname_receive, 'group' : group,'num' : num})
 
 
     return jsonify({'result': 'success'})
@@ -112,7 +117,7 @@ def api_login():
 
     # id, 암호화된pw을 가지고 해당 유저를 찾습니다.
 
-    result = db.jandi.find_one({'id': id_receive, 'pw': pw_hash})
+    result = db.members.find_one({'id': id_receive, 'pw': pw_hash})
 
     # 찾으면 JWT 토큰을 만들어 발급합니다.
     if result is not None:
@@ -151,11 +156,6 @@ def api_duplicate():
 @app.route('/search_team')
 def serch_team():
     return render_template('search_team.html')
-
-
-team_list_client = MongoClient(
-    "mongodb+srv://test:1111@cluster0.0euf5qj.mongodb.net/cluster0?retryWrites=true&w=majority")
-team_list_db = team_list_client.bs4db
 
 
 # 현재 생성된 팀 정보들을 가져온다.
