@@ -6,19 +6,24 @@ import datetime
 import certifi
 import jwt
 import hashlib
+import json
+
+with open('config.json', 'r') as f:
+    config = json.loads(f.read())
+
+USER_AGENT = config['BS4']['USER_AGENT']
+DB_HOST = config['DATABASE']['DB_HOST']
+SECRET_KEY = config['JWT']['SECRET_KEY']
 
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'}
+    'User-Agent': USER_AGENT
+}
 
 ca = certifi.where()
-MONGO_ADDRESS = 'mongodb+srv://test:1111@cluster0.0euf5qj.mongodb.net/cluster0?retryWrites=true&w=majority'
-client = MongoClient(MONGO_ADDRESS, tlsCAFile=ca)
+client = MongoClient(DB_HOST, tlsCAFile=ca)
 db = client.TodaysJandi
 
-SECRET_KEY = 'TODAYJANDI'
-
 app = Flask(__name__)
-
 
 @app.route('/')
 def home():
