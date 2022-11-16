@@ -41,7 +41,6 @@ def team_withdrwal():
 
     return "ok"
 
-
 @app.route("/teams/grasses/<int:team_id>", methods=["GET"])
 def team_info(team_id):
     team = db.teams.find_one({'num': team_id})
@@ -191,6 +190,111 @@ def create_team():
 # 팀에 참가한다.
 # @app.route('teams/join', methods=['POST'])
 # def join_team() :x
+
+@app.route('/cheer')
+def cheer():
+    return render_template('comment.html')
+
+@app.route("/cheer/create", methods=["POST"])
+def createComment():
+    comment_receive = request.form['comment_give']
+    time_receive = request.form['time_give']
+
+    jandiComment_list = list(db.postings.find({}, {'_id':False}))
+    cnt = len(jandiComment_list) + 1
+
+    # 쿠키 닉네임 빼와서 저장
+    token_receive = request.cookies.get('mytoken')
+    print(token_receive)
+    payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+    id_receive = db.members.find_one({'id': payload['id']}, {'_id': 0})
+    nickname_receive = id_receive['nickname']
+    print(nickname_receive)
+    num_receive = id_receive['num']
+    print(num_receive)
+
+    doc = {
+        'nickname':nickname_receive,
+        'comment':comment_receive,
+        'time':time_receive,
+        'num':num_receive
+    }
+    db.postings.insert_one(doc)
+
+    return jsonify({'msg':'작성 완료'})
+
+@app.route("/cheer/read", methods=["GET"])
+def readComment():
+    jandiComment_list = list(db.postings.find({}, {'_id':False}))
+    return jsonify({'jandi_comment':jandiComment_list})
+
+@app.route("/cheer/delete", methods=["POST"])
+def deleteComment():
+    num_receive = request.form['num_give']
+    db.postings.delete_one({'num': int(num_receive)})
+    return jsonify({'msg' : "삭제 완료!"})
+
+@app.route("/cheer/update", methods=["POST"])
+def updateComment():
+    num_receive = request.form['num_give']
+    comment_receive = request.form['comment_give']
+    db.postings.update_one({'num':int(num_receive)}, {'$set': {'comment' : comment_receive}})
+    return jsonify({'msg' : "수정 완료!"})
+
+# [유저 정보 확인 API]
+# 로그인된 유저만 call 할 수 있는 API입니다.
+# 유효한 토큰을 줘야 올바른 결과를 얻어갈 수 있습니다.
+# (그렇지 않으면 남의 장바구니라든가, 정보를 누구나 볼 수 있겠죠?)
+@app.route('/cheer/update', methods=['GET'])
+def commentUpdate_valid():
+    token_receive = request.cookies.get('mytoken')
+
+    # try / catch 문?
+    # try 아래를 실행했다가, 에러가 있으면 except 구분으로 가란 얘기입니다.
+
+    try:
+        # token을 시크릿키로 디코딩합니다.
+        # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
+        payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+        print(payload)
+
+        # payload 안에 id가 들어있습니다. 이 id로 유저정보를 찾습니다.
+        # 여기에선 그 예로 닉네임을 보내주겠습니다.
+        userinfo = db.members.find_one({'id': payload['id']}, {'_id': 0})
+        print(userinfo)
+
+        return jsonify({'result': 'success', 'num': userinfo['num']})
+    except jwt.ExpiredSignatureError:
+        # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
+        return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
+    except jwt.exceptions.DecodeError:
+        return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+
+@app.route('/cheer/delete', methods=['GET'])
+def commentDelete_valid():
+    token_receive = request.cookies.get('mytoken')
+
+    # try / catch 문?
+    # try 아래를 실행했다가, 에러가 있으면 except 구분으로 가란 얘기입니다.
+
+    try:
+        # token을 시크릿키로 디코딩합니다.
+        # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
+        payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+        print(payload)
+
+        # payload 안에 id가 들어있습니다. 이 id로 유저정보를 찾습니다.
+        # 여기에선 그 예로 닉네임을 보내주겠습니다.
+        userinfo = db.members.find_one({'id': payload['id']}, {'_id': 0})
+        num_receive = userinfo['num']
+        print(num_receive)
+
+        return jsonify({'result': 'success', 'num': num_receive})
+    except jwt.ExpiredSignatureError:
+        # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
+        return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
+    except jwt.exceptions.DecodeError:
+        return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
 
 if __name__ == '__main__':
     app.run('0.0.0.0', port=8080, debug=True)
