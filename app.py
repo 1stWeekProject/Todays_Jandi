@@ -166,25 +166,40 @@ def create_team():
     access_receive = request.form['access_give']
     teamName_receive = request.form['TeamName_give']
     teamPassword_receive = request.form['TeamPassword_give']
-    members_receive = ["hanju"]  # 추후 만든 사람 닉네임으로 바꾸는 작업 해야됨
+    members_receive = "member" # 임시정보
+    token_receive = request.cookies.get('mytoken')
 
-    team_list = list(db.teams.find({}, {'_id': False}))
+    try:
+        # token을 시크릿키로 디코딩합니다.
+        # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
+        payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+
+        members_receive = payload['id']
+    except jwt.ExpiredSignatureError:
+        # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
+        return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
+    except jwt.exceptions.DecodeError:
+        return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+
+    team_list = list(db.jandiTeams.find({}, {'_id': False}))
     num = 0 if (len(team_list) == 0) else team_list[(len(team_list)) - 1]['num'] + 1
 
     doc = {
         'num': num,
-        'access': access_receive,
+        'access' : access_receive,
         'TeamName': teamName_receive,
         'TeamPassword': teamPassword_receive,
         'members': members_receive
     }
-    db.teams.insert_one(doc)
+    db.jandiTeams.insert_one(doc)
     return jsonify({'msg': '팀 생성 성공!'})
 
 
 # 팀에 참가한다.
 # @app.route('teams/join', methods=['POST'])
-# def join_team() :x
+# def join_team() :
+
+
 
 if __name__ == '__main__':
     app.run('0.0.0.0', port=8080, debug=True)

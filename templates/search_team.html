@@ -136,12 +136,13 @@
                     let rows = response['teams']
                     console.log(rows)
                     for (let i = 0; i < rows.length; i++) {
+                        let num = rows[i]['num'];
                         let team_name = rows[i]['TeamName'];
                         let team_password = rows[i]['TeamPassword'];
                         let access = (rows[i]['access'] == "public") ? "PublicTeamImg" : "privateTeamImg";
                         let members = rows[i]['members'].length;
 
-                        let temp_html = `<div class="teamInfo">
+                        let temp_html = `<div class="teamInfo" id="${num}">
                                             <img src="/static/${access}.png">
                                             <p style="word-break: normal">${team_name}</p>
                                             <p>${members}명</p>
