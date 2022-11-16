@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>팀 잔디 현황</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="/static/css/team.css">
+</head>
+<body>
+
+{% include 'header.html' %}
+
+<main>
+    {% for info in member_infos %}
+    <div class="grass">
+        <div class="user">
+            <div class="user-info">
+                <span class="user-nickname">{{ info[0] }}</span>님의 잔디밭
+            </div>
+            <div class="commit-info">
+                오늘 <span class="commit-count">{{ info[1] }}</span>번 커밋 했어요!
+            </div>
+        </div>
+        <div class="grass-info">
+            <img class="user-grass" src="https://ghchart.rshah.org/{{ info[2] }}">
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="button-box">
+        <button class="button" onclick="withdrawl()">팀 나가기</button>
+    </div>
+</main>
+<script>
+    function withdrawl() {
+        $.ajax({
+            type: "DELETE",
+            url: "/teams/withdrawl",
+            data: {
+                // 유저 id 필요
+                team_id: {{ team_id|safe }}
+            },
+            success: function (response) {
+                alert('팀 탈퇴 성공!');
+                $(location).attr('href', '/')
+            }
+        });
+    }
+
+</script>
+</body>
+</html>
