@@ -304,21 +304,18 @@
                         if (response['result'] == 'success') {
                             // 로그인이 정상적으로 되면, 토큰을 받아옵니다.
                             // 이 토큰을 mytoken이라는 키 값으로 쿠키에 저장합니다.
-                            $.cookie('mytoken', response['token']);
-
+                            window.location.href='/serch_team'
                             alert('로그인 완료!')
-
                         } else {
                             // 로그인이 안되면 에러메시지를 띄웁니다.
                             alert(response['msg'])
+
                         }
                     }
                 })
         }
-// 정규화 function
+        // 정규화 function
         //아 이거  돌면 안될것 같은데 필드값 onchane가 변화하는 시점에서 어떻게할까..
-
-
         $(function disable() {
             let btn_join = document.getElementById('btn_join');
             btn_join.disable = true;
@@ -378,10 +375,10 @@
 
        $(document).ready(function(){
             let r_pw = document.getElementById('r_pw');
-    let pw_check = document.getElementById("pw_check");
-    pw_check.addEventListener("blur",function(event){
+            let pw_check = document.getElementById("pw_check");
+            pw_check.addEventListener("blur",function(event){
         compare();
-    })
+        })
 });
 
     </script>
