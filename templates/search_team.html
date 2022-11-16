@@ -123,6 +123,7 @@
     </style>
 
     <script>
+        let clickedID = 0;
         $(document).ready(function () {
             show_teams();
         });
@@ -136,16 +137,18 @@
                     let rows = response['teams']
                     console.log(rows)
                     for (let i = 0; i < rows.length; i++) {
+                        let num = rows[i]['num'];
                         let team_name = rows[i]['TeamName'];
                         let team_password = rows[i]['TeamPassword'];
                         let access = (rows[i]['access'] == "public") ? "PublicTeamImg" : "privateTeamImg";
                         let members = rows[i]['members'].length;
 
+                        let actFunction = (rows[i]['access'] == "public") ? "join_public_team(this.id)" : "show_join_pop_up(this.id)"
                         let temp_html = `<div class="teamInfo">
                                             <img src="/static/${access}.png">
                                             <p style="word-break: normal">${team_name}</p>
                                             <p>${members}명</p>
-                                            <button class="teamJoinBtn" onclick="show_join_pop_up()">팀 참가하기</button>
+                                            <button id="${num}" class="teamJoinBtn" onclick="${actFunction}">팀 참가하기</button>
                                         </div>`
                         $('.teamList').append(temp_html);
                     }
@@ -199,7 +202,9 @@
             }
         }
 
-        function show_join_pop_up () {
+        function show_join_pop_up (clicked) {
+            clicked_id = clicked;
+            console.log(clicked_id);
             document.getElementById("join_team_popup").className = "background show";
         }
 
@@ -207,6 +212,36 @@
             document.getElementById("join_team_popup").className = "background";
         }
 
+        function join_private_team() {
+            let team_num = clicked_id
+            let password = $('#team_password').val();
+            $.ajax({
+                type: 'POST',
+                url: '/teams/join_private_team',
+                data: {team_num_give: team_num, password_give: password},
+                success: function (response) {
+                    //화면 이동 메소드 추가 필요
+                    alert(response['msg']);
+                    window.location.reload();
+                }
+            })
+        }
+
+        function join_public_team(clicked) {
+            clicked_id = clicked;
+            console.log(clicked_id);
+            let team_num = clicked_id;
+            $.ajax({
+                type: 'POST',
+                url: 'teams/join_public_team',
+                data: {team_num_give: team_num},
+                success: function (response) {
+                    // 화면이동 메소드 추가 필요
+                    alert(response['msg']);
+                    window.location.reload();
+                }
+            })
+        }
     </script>
 </head>
 <body>
@@ -266,9 +301,9 @@
                     </p>
                 </div>
                 <div style="height: 100px;display: flex; flex-direction: column; justify-content: center; align-items : center;">
-                    <input id="join_password" type="password" name="UserID" style="margin-top: 15px; height: 30px; width: 400px" placeholder="비밀번호">
+                    <input id="team_password" type="password" name="TeamPassword" style="margin-top: 15px; height: 30px; width: 400px" placeholder="비밀번호를 입력해주세요~">
                     <div style="width: 300px; margin-top: 5px; display: flex; flex-direction: row; justify-content: space-between">
-                        <button style="outline: 0; border-radius: 10px; height: 30px; width: 120px; border: 0; color: white; background-color: #35D34E">입장하기!</button>
+                        <button onclick="join_private_team()" style="outline: 0; border-radius: 10px; height: 30px; width: 120px; border: 0; color: white; background-color: #35D34E">입장하기!</button>
                         <button onclick="close_join_pop_up()" style="outline: 0; border-radius: 10px; height: 30px; width: 120px; border: 0; color: white; background-color: orangered">취소!</button>
                     </div>
                 </div>

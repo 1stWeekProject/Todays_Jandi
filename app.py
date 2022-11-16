@@ -177,7 +177,7 @@ def api_duplicate():
         return jsonify({'result': 'fail', 'msg': '사용하셔도 좋은 아이디입니다.'})
 
 
-@app.route('/serch_team')
+@app.route('/search_team')
 def serch_team():
     return render_template('search_team.html')
 
@@ -189,21 +189,33 @@ def get_teams_info():
     team_list = list(db.teams.find({}, {'_id': False}))
     return jsonify({'teams': team_list})
 
-
 # 팀을 생성한다.
 @app.route('/teams/create', methods=["POST"])
 def create_team():
     access_receive = request.form['access_give']
     teamName_receive = request.form['TeamName_give']
     teamPassword_receive = request.form['TeamPassword_give']
-    members_receive = ["hanju"]  # 추후 만든 사람 닉네임으로 바꾸는 작업 해야됨
+    members_receive = ["member"] # 임시정보
+    token_receive = request.cookies.get('mytoken')
+
+    try:
+        # token을 시크릿키로 디코딩합니다.
+        # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
+        payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+
+        members_receive[0] = payload['id']
+    except jwt.ExpiredSignatureError:
+        # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
+        return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
+    except jwt.exceptions.DecodeError:
+        return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
 
     team_list = list(db.teams.find({}, {'_id': False}))
     num = 0 if (len(team_list) == 0) else team_list[(len(team_list)) - 1]['num'] + 1
 
     doc = {
         'num': num,
-        'access': access_receive,
+        'access' : access_receive,
         'TeamName': teamName_receive,
         'TeamPassword': teamPassword_receive,
         'members': members_receive
@@ -212,9 +224,66 @@ def create_team():
     return jsonify({'msg': '팀 생성 성공!'})
 
 
+@app.route('/teams/join_private_team', methods=['POST'])
+def join_private_team() :
+    team_num_receive = int(request.form['team_num_give'])
+    password_receive = request.form['password_give']
+    token_receive = request.cookies.get('mytoken')
+    user_name = ""
+
+    data = db.teams.find_one({"num": team_num_receive})
+    db_password = data['TeamPassword']
+
+    if (password_receive == db_password):
+        try:
+            # token을 시크릿키로 디코딩합니다.
+            # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
+            payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+            user_name = payload['id']
+        except jwt.ExpiredSignatureError:
+            # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
+            return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
+        except jwt.exceptions.DecodeError:
+            return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+        data = db.teams.find_one({"num": team_num_receive})
+        member_list = data['members']
+        member_list.append(user_name)
+
+        db.teams.update_one({"num": team_num_receive}, {"$set": {"members": member_list}}, upsert=True)
+        # 이제 선택한 방으로 이동
+        return jsonify({'result': 'success', 'msg': '성공'})
+    else:
+        return jsonify({'result': 'success', 'msg': '잘못된 비밀번호 입니다.'})
+
+
+
 # 팀에 참가한다.
-# @app.route('teams/join', methods=['POST'])
-# def join_team() :x
+@app.route('/teams/join_public_team', methods=['POST'])
+def join_public_team() :
+    team_num_receive = int(request.form['team_num_give'])
+    token_receive = request.cookies.get('mytoken')
+    user_name = ""
+
+    try:
+        # token을 시크릿키로 디코딩합니다.
+        # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
+        payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+        user_name= payload['id']
+    except jwt.ExpiredSignatureError:
+        # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
+        return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
+    except jwt.exceptions.DecodeError:
+        return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+
+    data = db.teams.find_one({"num": team_num_receive})
+    member_list = data['members']
+    member_list.append(user_name)
+
+    db.teams.update_one({"num": team_num_receive}, {"$set": {"members": member_list}}, upsert=True)
+    # 이제 선택한 방으로 이동
+    return jsonify({'result': 'success', 'msg': '성공'})
+
+# 로그아웃 추가 필요
 
 if __name__ == '__main__':
     app.run('0.0.0.0', port=8080, debug=True)
