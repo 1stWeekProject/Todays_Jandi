@@ -253,6 +253,8 @@ def join_private_team() :
         member_list = data['members']
         member_list.append(user_name)
 
+        #중복검사 필요
+
         db.teams.update_one({"num": team_num_receive}, {"$set": {"members": member_list}}, upsert=True)
         # 이제 선택한 방으로 이동
         return jsonify({'result': 'success', 'msg': '성공'})
@@ -278,6 +280,8 @@ def join_public_team() :
         return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
     except jwt.exceptions.DecodeError:
         return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+
+    #중복검사 필요
 
     data = db.teams.find_one({"num": team_num_receive})
     member_list = data['members']
