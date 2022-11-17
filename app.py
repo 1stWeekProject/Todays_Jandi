@@ -65,16 +65,16 @@ def team_info(team_id):
         return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
 
     login_user = db.members.find_one({'id': user_id}, {'_id': False})
-    login_user_nickname = login_user['nickname']
-    is_team = False
+    login_user_id = login_user['id']
+    is_user_in_team = False
 
     team = db.teams.find_one({'num': team_id})
 
     team_members = []
-    for member_nickname in team['members']:
-        if member_nickname == login_user_nickname:
-            is_team = True
-        team_member = db.members.find_one({'nickname': member_nickname}, {'_id': False})
+    for member_id in team['members']:
+        if member_id == login_user_id:
+            is_user_in_team = True
+        team_member = db.members.find_one({'id': member_id}, {'_id': False})
         team_members.append(team_member)
 
     GITHUB_NICKNAME_KEY = 'github'
@@ -92,18 +92,15 @@ def team_info(team_id):
     return render_template('team.html',
                            member_infos=member_infos,
                            team_id=team_id,
-                           is_team=is_team)
+                           is_team=is_user_in_team)
 
 
 def get_daily_commit_count(github_nickname):
     request_url = 'https://github.com/{}'.format(github_nickname)
     data = requests.get(request_url, headers=headers)
     soup = BeautifulSoup(data.text, 'html.parser')
-    print(soup)
 
     today = datetime.datetime.today().strftime("%Y-%m-%d")
-    print(today)
-    print(date.today())
     daily_commit = soup.select_one("rect[data-date='{}']".format(today))
     if daily_commit is None:
         yesterday = date.today() - timedelta(1)
