@@ -37,9 +37,6 @@ GitHub에서 제공하는 그동안  얼마나 열심히 코딩을 했는지 볼
 ## 와이어 프레임 / 프로토타입
 ![Untitled 2](https://user-images.githubusercontent.com/28504937/202376953-05fccc12-339f-49c6-9d73-1f9a429fa7d1.png)
 
-## API 기능 명세서
-
-[API 기능 명세서](https://www.notion.so/API-e0c76d976f3d43d89118be87467d5e36)
 
 # 4. ****개발 환경 설정****
 ```python
