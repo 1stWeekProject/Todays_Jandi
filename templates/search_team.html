@@ -6,6 +6,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.js"></script>
 
     <meta charset="UTF-8">
     <title>팀 참가하기</title>
@@ -19,9 +20,25 @@
         .header {
             font-size: 30px;
             display: flex;
+            justify-content: space-between;
             align-items: center;
             width: 100%;
             background-color: #C5F8B3;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        .logout_btn {
+            border: 0;
+            outline: 0;
+            background-color: #f44336;
+            color: white;
+            font-size: 20px;
+            border-radius: 10px;
+            margin-right: 16px;
+            height: 80px;
+            width: 200px;
         }
         .teamList {
             display: flex;
@@ -128,6 +145,11 @@
             show_teams();
         });
 
+        function logout(){
+            $.removeCookie('mytoken');
+            alert('로그아웃!');
+            window.location.href = '/';
+        }
         function show_teams() {
             $.ajax({
                 type: 'GET',
@@ -248,8 +270,13 @@
 </head>
 <body>
 <div class="header">
-    <img src="/static/Jandi-logo.png" style="margin-right: 30px">
-    <h1>오늘의 잔디</h1>
+    <div class="logo">
+        <img src="/static/Jandi-logo.png" style="margin-right: 30px">
+        <h1>오늘의 잔디</h1>
+    </div>
+    <div>
+        <button class="logout_btn" onclick="logout()">로그아웃</button>
+    </div>
 </div>
 
 <div class="teamList">
