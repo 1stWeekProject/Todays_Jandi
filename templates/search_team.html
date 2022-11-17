@@ -203,7 +203,7 @@
             passwordCheck.style.display = "block"
         }
 
-        function save_team() {
+        function create_team() {
             var access = $('input[name="access"]:checked').val();
             let teamName = $('#teamName').val();
             let teamPassword = (access == 'public') ? "" : $('#passwordForm').val();
@@ -216,7 +216,7 @@
                 data: {access_give: access, TeamName_give: teamName, TeamPassword_give: teamPassword},
                 success: function (response) {
                     alert(response['msg'])
-                    window.location.reload();
+                    window.location.href = '/teams/grasses/' + response['num'];
                 }
             });
             } else { // 비밀번호를 잘못입력했는지 확인
@@ -254,14 +254,12 @@
 
         function join_public_team(clicked) {
             clicked_id = clicked;
-            console.log(clicked_id);
             let team_num = clicked_id;
             $.ajax({
                 type: 'POST',
                 url: 'teams/join_public_team',
                 data: {team_num_give: team_num},
                 success: function (response) {
-                    // 화면이동 메소드 추가 필요
                     window.location.href = '/teams/grasses/' + team_num;
                 }
             })
@@ -312,7 +310,7 @@
                 </div>
 
                 <div class="modalItems">
-                    <button class="modalBtn" style="background-color: #35D34E" onclick="save_team()">팀 만들기!</button>
+                    <button class="modalBtn" style="background-color: #35D34E" onclick="create_team()">팀 만들기!</button>
                     <button class="modalBtn" style="background-color: #033821" onclick="close_pop_up()">취소</button>
                 </div>
             </div>
