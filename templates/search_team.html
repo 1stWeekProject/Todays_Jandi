@@ -157,7 +157,6 @@
                 data: {},
                 success: function (response) {
                     let rows = response['teams']
-                    console.log(rows)
                     for (let i = 0; i < rows.length; i++) {
                         let num = rows[i]['num'];
                         let team_name = rows[i]['TeamName'];
@@ -168,7 +167,9 @@
                         let actFunction = (rows[i]['access'] == "public") ? "join_public_team(this.id)" : "show_join_pop_up(this.id)"
                         let temp_html = `<div class="teamInfo">
                                             <img src="/static/${access}.png">
-                                            <p style="word-break: normal">${team_name}</p>
+                                            <a href="/teams/grasses/${num}">
+                                                <p style="word-break: normal">${team_name}</p>
+                                            </a>
                                             <p>${members}명</p>
                                             <button id="${num}" class="teamJoinBtn" onclick="${actFunction}">팀 참가하기</button>
                                         </div>`
@@ -272,6 +273,12 @@
         <img src="/static/Jandi-logo.png" style="margin-right: 30px">
         <h1>오늘의 잔디</h1>
     </div>
+    <a href="/cheer" style="text-decoration-line: none">
+        <p>응원하기</p>
+    </a>
+    <a href="/ranks" style="text-decoration-line: none">
+        <p>랭킹</p>
+    </a>
     <div>
         <button class="logout_btn" onclick="logout()">로그아웃</button>
     </div>

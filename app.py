@@ -233,7 +233,21 @@ def api_confirmgit():
 
 @app.route('/search_team')
 def serch_team():
-    return render_template('search_team.html')
+    token_receive = request.cookies.get('mytoken')
+    try:
+        payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+        user_id = payload['id']
+        db_user_id = list(db.members.find({'id': user_id}))
+
+        if len(db_user_id) != 0:
+            return render_template('search_team.html')
+        else:
+            return jsonify({'result': 'fail', 'msg': '존재하지 않는 회원입니다.'})
+    except jwt.ExpiredSignatureError:
+        return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
+    except jwt.exceptions.DecodeError:
+        return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+
 
 
 
