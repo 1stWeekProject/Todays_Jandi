@@ -9,6 +9,8 @@
 ![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
 ![JWT](https://img.shields.io/badge/JWT-black?style=for-the-badge&logo=JSON%20web%20tokens)
 
+### [오늘의 잔디 링크](http://52.79.227.227:5000/)
+
 ## 오늘의 잔디는?
 ![Untitled 1](https://user-images.githubusercontent.com/28504937/202376922-91a2a938-32d3-4fa5-ba57-76c46f9c47d4.png)
 어떠한 일을 꾸준히 실행하는 것은 쉽지 않은 일입니다. 아프리카 속담 중 **“혼자 가면 빨리가지만 함께 하면 멀리간다.”** 라는 말이 있습니다. 저희팀은 꾸준히, 코딩을 할 수 있도록 하는 비법을  바로 이 속담에서 찾을 수 있었습니다. 저희는 서비스 사용자에게 같이 잔디를 심을 팀을 만들어 서로 응원을 하고 때로는 경쟁을 할 수 있도록 하는 서비스 “**오늘의 잔디**”을 기획해보았습니다.
