@@ -71,6 +71,7 @@
 
         #commentTime {
             margin-right: 5px;
+            margin-left: 5px;
         }
 
     </style>
@@ -218,7 +219,7 @@
                 url: "cheer/update",
                 data: {
                     num_give: num,
-                    comment_give: updateComment
+                    comment_give: updateComment,
                 },
                 success: function (response) {
                     if (response['result'] == 'success') {

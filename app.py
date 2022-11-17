@@ -378,9 +378,11 @@ def updateComment():
     num_receive = request.form['num_give']
     comment_receive = request.form['comment_give']
     userinfo = db.postings.find_one({'valid': int(num_receive)})
+    now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     if userinfo['valid'] == int(num_receive):
         db.postings.update_one({'num': int(num_receive)}, {'$set': {'comment': comment_receive}})
+        db.postings.update_one({'num': int(num_receive)}, {'$set': {'time': now}})
         return jsonify({'result' : 'success', 'msg': "수정 완료!"})
     else:
         return jsonify({'result' : 'fail', 'msg' : "수정 권한이 없습니다."})
