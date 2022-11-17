@@ -8,6 +8,7 @@ import certifi
 import jwt
 import hashlib
 import json
+from apscheduler.schedulers.background import BackgroundScheduler
 
 with open('config.json', 'r') as f:
     config = json.loads(f.read())
@@ -23,6 +24,49 @@ headers = {
 ca = certifi.where()
 client = MongoClient(DB_HOST, tlsCAFile=ca)
 db = client.TodaysJandi
+
+
+def get_daily_commit_count(github_nickname, specific_date):
+    request_url = 'https://github.com/{}'.format(github_nickname)
+    data = requests.get(request_url, headers=headers)
+    soup = BeautifulSoup(data.text, 'html.parser')
+
+    daily_commit = soup.select_one("svg.js-calendar-graph-svg rect[data-date='{}']".format(specific_date))
+    if daily_commit is None:
+        yesterday = specific_date - timedelta(1)
+        daily_commit = soup.select_one("svg.js-calendar-graph-svg rect[data-date='{}']".format(yesterday))
+
+    daily_commit_count = daily_commit['data-count']
+    return daily_commit_count
+
+
+def rank_adjust():
+    all_users = list(db.members.find({}, {'_id': False}))
+    for user in all_users:
+        nickname = user['nickname']
+        github = user['github']
+
+        continue_commit_days = 0
+        check_day = date.today() - timedelta(1)
+        while int(get_daily_commit_count(github, check_day)) > 0:
+            continue_commit_days += 1
+            check_day = check_day - timedelta(1)
+
+        data = {
+            'nickname': nickname,
+            'commit_days': continue_commit_days,
+        }
+
+        rank = db.ranks.find_one({'nickname': nickname})
+        if rank is None:
+            db.ranks.insert_one(data)
+        else:
+            db.ranks.update_one({'nickname': nickname}, {'$set': {'commit_days': continue_commit_days}})
+
+
+sched = BackgroundScheduler(daemon=True)
+sched.add_job(rank_adjust, 'interval', minutes=1)
+sched.start()
 
 app = Flask(__name__)
 
@@ -53,6 +97,7 @@ def team_withdrwal():
 
     return "ok"
 
+
 @app.route("/teams/grasses/<int:team_id>", methods=["GET"])
 def team_info(team_id):
     token_receive = request.cookies.get('mytoken')
@@ -65,23 +110,24 @@ def team_info(team_id):
         return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
 
     login_user = db.members.find_one({'id': user_id}, {'_id': False})
-    login_user_nickname = login_user['nickname']
-    is_team = False
+    login_user_id = login_user['id']
+    is_user_in_team = False
 
     team = db.teams.find_one({'num': team_id})
 
     team_members = []
-    for member_nickname in team['members']:
-        if member_nickname == login_user_nickname:
-            is_team = True
-        team_member = db.members.find_one({'nickname': member_nickname}, {'_id': False})
+    for member_id in team['members']:
+        if member_id == login_user_id:
+            is_user_in_team = True
+        team_member = db.members.find_one({'id': member_id}, {'_id': False})
         team_members.append(team_member)
 
     GITHUB_NICKNAME_KEY = 'github'
     github_nicknames = [i[GITHUB_NICKNAME_KEY] for i in team_members]
     member_commit_counts = []
+    today = date.today()
     for github_nickname in github_nicknames:
-        commit_counts = get_daily_commit_count(github_nickname)
+        commit_counts = get_daily_commit_count(github_nickname, today)
         member_commit_counts.append(commit_counts)
 
     MEMBER_NICKNAME_KEY = 'nickname'
@@ -92,25 +138,7 @@ def team_info(team_id):
     return render_template('team.html',
                            member_infos=member_infos,
                            team_id=team_id,
-                           is_team=is_team)
-
-
-def get_daily_commit_count(github_nickname):
-    request_url = 'https://github.com/{}'.format(github_nickname)
-    data = requests.get(request_url, headers=headers)
-    soup = BeautifulSoup(data.text, 'html.parser')
-    print(soup)
-
-    today = datetime.datetime.today().strftime("%Y-%m-%d")
-    print(today)
-    print(date.today())
-    daily_commit = soup.select_one("rect[data-date='{}']".format(today))
-    if daily_commit is None:
-        yesterday = date.today() - timedelta(1)
-        daily_commit = soup.select_one("rect[data-date='{}']".format(yesterday))
-
-    daily_commit_count = daily_commit['data-count']
-    return daily_commit_count
+                           is_team=is_user_in_team)
 
 
 # [회원가입 API]
@@ -159,8 +187,10 @@ def api_login():
         }
         token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
 
+        # 회원의 팀정보를 response로 같이 반환
+        joined_team = result['group']
         # token을 줍니다.
-        return jsonify({'result': 'success', 'token': token})
+        return jsonify({'result': 'success', 'token': token, 'team': joined_team})
     # 찾지 못하면
     else:
         return jsonify({'result': 'fail', 'msg': '아이디/비밀번호가 일치하지 않습니다.'})
@@ -193,23 +223,20 @@ def get_teams_info():
     team_list = list(db.teams.find({}, {'_id': False}))
     return jsonify({'teams': team_list})
 
+
 # 팀을 생성한다.
 @app.route('/teams/create', methods=["POST"])
 def create_team():
     access_receive = request.form['access_give']
     teamName_receive = request.form['TeamName_give']
     teamPassword_receive = request.form['TeamPassword_give']
-    members_receive = ["member"] # 임시정보
+    members_receive = ["member"]  # 임시정보
     token_receive = request.cookies.get('mytoken')
 
     try:
-        # token을 시크릿키로 디코딩합니다.
-        # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
         payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
-
         members_receive[0] = payload['id']
     except jwt.ExpiredSignatureError:
-        # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
         return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
     except jwt.exceptions.DecodeError:
         return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
@@ -219,17 +246,19 @@ def create_team():
 
     doc = {
         'num': num,
-        'access' : access_receive,
+        'access': access_receive,
         'TeamName': teamName_receive,
         'TeamPassword': teamPassword_receive,
         'members': members_receive
     }
     db.teams.insert_one(doc)
-    return jsonify({'msg': '팀 생성 성공!'})
+
+    db.members.update_one({"id": members_receive[0]}, {"$set": {"group": num}})
+    return jsonify({'msg': '팀 생성 성공!', 'num': num})
 
 
 @app.route('/teams/join_private_team', methods=['POST'])
-def join_private_team() :
+def join_private_team():
     team_num_receive = int(request.form['team_num_give'])
     password_receive = request.form['password_give']
     token_receive = request.cookies.get('mytoken')
@@ -238,21 +267,24 @@ def join_private_team() :
     data = db.teams.find_one({"num": team_num_receive})
     db_password = data['TeamPassword']
 
-    if (password_receive == db_password):
+    if password_receive == db_password:
         try:
-            # token을 시크릿키로 디코딩합니다.
-            # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
             payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
             user_name = payload['id']
         except jwt.ExpiredSignatureError:
-            # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
             return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
         except jwt.exceptions.DecodeError:
             return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
-        data = db.teams.find_one({"num": team_num_receive})
+
         member_list = data['members']
         member_list.append(user_name)
 
+        # 중복검사
+        for i in member_list:
+            if i == user_name:
+                return jsonify({'result': 'fail', 'msg': '중복된 회원이 있습니다.'})
+
+        db.members.update_one({"id": user_name}, {"$set": {"group": team_num_receive}})
         db.teams.update_one({"num": team_num_receive}, {"$set": {"members": member_list}}, upsert=True)
         # 이제 선택한 방으로 이동
         return jsonify({'result': 'success', 'msg': '성공'})
@@ -260,10 +292,9 @@ def join_private_team() :
         return jsonify({'result': 'fail', 'msg': '잘못된 비밀번호 입니다.'})
 
 
-
 # 팀에 참가한다.
 @app.route('/teams/join_public_team', methods=['POST'])
-def join_public_team() :
+def join_public_team():
     team_num_receive = int(request.form['team_num_give'])
     token_receive = request.cookies.get('mytoken')
     user_name = ""
@@ -272,7 +303,7 @@ def join_public_team() :
         # token을 시크릿키로 디코딩합니다.
         # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
         payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
-        user_name= payload['id']
+        user_name = payload['id']
     except jwt.ExpiredSignatureError:
         # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
         return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
@@ -280,65 +311,94 @@ def join_public_team() :
         return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
 
     data = db.teams.find_one({"num": team_num_receive})
+
     member_list = data['members']
+    for i in member_list:
+        if (i == user_name):
+            return jsonify({'result': 'fail', 'msg': '중복된 회원이 있습니다.'})
+
     member_list.append(user_name)
-
+    db.members.update_one({"id": user_name}, {"$set": {"group": team_num_receive}})
     db.teams.update_one({"num": team_num_receive}, {"$set": {"members": member_list}}, upsert=True)
-    # 이제 선택한 방으로 이동
     return jsonify({'result': 'success', 'msg': '성공'})
-
-# 로그아웃 추가 필요
 
 
 @app.route('/cheer')
 def cheer():
     return render_template('comment.html')
 
+
 @app.route("/cheer/create", methods=["POST"])
 def createComment():
     comment_receive = request.form['comment_give']
     time_receive = request.form['time_give']
 
-    jandiComment_list = list(db.postings.find({}, {'_id':False}))
+    jandiComment_list = list(db.postings.find({}, {'_id': False}))
     cnt = len(jandiComment_list) + 1
 
     # 쿠키 닉네임 빼와서 저장
     token_receive = request.cookies.get('mytoken')
-    print(token_receive)
     payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
     id_receive = db.members.find_one({'id': payload['id']}, {'_id': 0})
     nickname_receive = id_receive['nickname']
-    print(nickname_receive)
     num_receive = id_receive['num']
-    print(num_receive)
+    valid_receive = id_receive['num']
 
     doc = {
         'nickname':nickname_receive,
         'comment':comment_receive,
         'time':time_receive,
-        'num':num_receive
+        'num':num_receive,
+        'valid':valid_receive
     }
     db.postings.insert_one(doc)
 
-    return jsonify({'msg':'작성 완료'})
+    return jsonify({'msg': '작성 완료'})
+
 
 @app.route("/cheer/read", methods=["GET"])
 def readComment():
-    jandiComment_list = list(db.postings.find({}, {'_id':False}))
-    return jsonify({'jandi_comment':jandiComment_list})
+    jandiComment_list = list(db.postings.find({}, {'_id': False}))
+    return jsonify({'jandi_comment': jandiComment_list})
+
 
 @app.route("/cheer/delete", methods=["POST"])
 def deleteComment():
     num_receive = request.form['num_give']
     db.postings.delete_one({'num': int(num_receive)})
-    return jsonify({'msg' : "삭제 완료!"})
+    return jsonify({'msg': "삭제 완료!"})
+
 
 @app.route("/cheer/update", methods=["POST"])
 def updateComment():
+    # num_receive = request.form['num_give']
+    # comment_receive = request.form['comment_give']
+    # db.postings.update_one({'num': int(num_receive)}, {'$set': {'comment': comment_receive}})
+    # return jsonify({'msg': "수정 완료!"})
     num_receive = request.form['num_give']
     comment_receive = request.form['comment_give']
-    db.postings.update_one({'num':int(num_receive)}, {'$set': {'comment' : comment_receive}})
-    return jsonify({'msg' : "수정 완료!"})
+    userinfo = db.postings.find_one({'valid': int(num_receive)})
+
+    if userinfo['valid'] == int(num_receive):
+        db.postings.update_one({'num': int(num_receive)}, {'$set': {'comment': comment_receive}})
+        return jsonify({'result' : 'success', 'msg': "수정 완료!"})
+    else:
+        return jsonify({'result' : 'fail', 'msg' : "수정 권한이 없습니다."})
+
+    # try:
+    #     payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+    #     print(payload)
+    #
+    #     # payload 안에 id가 들어있습니다. 이 id로 유저정보를 찾습니다.
+    #     # 여기에선 그 예로 닉네임을 보내주겠습니다.
+    #     userinfo = db.members.find_one({'id': payload['id']}, {'_id': 0})
+    #     return jsonify({'result': 'success', 'num': userinfo['num']})
+    # except jwt.ExpiredSignatureError:
+    #     # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
+    #     return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
+    # except jwt.exceptions.DecodeError:
+    #     return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+
 
 # [유저 정보 확인 API]
 # 로그인된 유저만 call 할 수 있는 API입니다.
@@ -355,12 +415,10 @@ def commentUpdate_valid():
         # token을 시크릿키로 디코딩합니다.
         # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
         payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
-        print(payload)
 
         # payload 안에 id가 들어있습니다. 이 id로 유저정보를 찾습니다.
         # 여기에선 그 예로 닉네임을 보내주겠습니다.
         userinfo = db.members.find_one({'id': payload['id']}, {'_id': 0})
-        print(userinfo)
 
         return jsonify({'result': 'success', 'num': userinfo['num']})
     except jwt.ExpiredSignatureError:
@@ -368,6 +426,7 @@ def commentUpdate_valid():
         return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
     except jwt.exceptions.DecodeError:
         return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+
 
 @app.route('/cheer/delete', methods=['GET'])
 def commentDelete_valid():
@@ -380,13 +439,11 @@ def commentDelete_valid():
         # token을 시크릿키로 디코딩합니다.
         # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
         payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
-        print(payload)
 
         # payload 안에 id가 들어있습니다. 이 id로 유저정보를 찾습니다.
         # 여기에선 그 예로 닉네임을 보내주겠습니다.
         userinfo = db.members.find_one({'id': payload['id']}, {'_id': 0})
         num_receive = userinfo['num']
-        print(num_receive)
 
         return jsonify({'result': 'success', 'num': num_receive})
     except jwt.ExpiredSignatureError:
@@ -394,6 +451,16 @@ def commentDelete_valid():
         return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
     except jwt.exceptions.DecodeError:
         return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+
+
+@app.route("/ranks", methods=["GET"])
+def ranks():
+    rank_list = list(db.ranks.find().sort('commit_days', -1).limit(10))
+    idxs = []
+    for i in range(len(rank_list)):
+        idxs.append(i + 1)
+    return render_template('rank.html', rank_list=zip(idxs, rank_list))
+
 
 if __name__ == '__main__':
     app.run('0.0.0.0', port=8080, debug=True)
