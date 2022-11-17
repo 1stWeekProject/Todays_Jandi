@@ -156,8 +156,10 @@ def api_login():
         }
         token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
 
+        # 회원의 팀정보를 response로 같이 반환
+        joined_team = result['group']
         # token을 줍니다.
-        return jsonify({'result': 'success', 'token': token})
+        return jsonify({'result': 'success', 'token': token, 'team': joined_team})
     # 찾지 못하면
     else:
         return jsonify({'result': 'fail', 'msg': '아이디/비밀번호가 일치하지 않습니다.'})
@@ -200,13 +202,9 @@ def create_team():
     token_receive = request.cookies.get('mytoken')
 
     try:
-        # token을 시크릿키로 디코딩합니다.
-        # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
         payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
-
         members_receive[0] = payload['id']
     except jwt.ExpiredSignatureError:
-        # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
         return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
     except jwt.exceptions.DecodeError:
         return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
@@ -222,7 +220,9 @@ def create_team():
         'members': members_receive
     }
     db.teams.insert_one(doc)
-    return jsonify({'msg': '팀 생성 성공!'})
+
+    db.members.update_one({"id": members_receive[0]}, {"$set": {"group": num}})
+    return jsonify({'msg': '팀 생성 성공!', 'num': num})
 
 
 @app.route('/teams/join_private_team', methods=['POST'])
@@ -235,25 +235,24 @@ def join_private_team() :
     data = db.teams.find_one({"num": team_num_receive})
     db_password = data['TeamPassword']
 
-    if (password_receive == db_password):
+    if password_receive == db_password:
         try:
-            # token을 시크릿키로 디코딩합니다.
-            # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
             payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
             user_name = payload['id']
         except jwt.ExpiredSignatureError:
-            # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
             return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
         except jwt.exceptions.DecodeError:
             return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
-        data = db.teams.find_one({"num": team_num_receive})
+
         member_list = data['members']
         member_list.append(user_name)
 
-        # 중복검사 필요
+        # 중복검사
         for i in member_list:
-            if (i == user_name): return jsonify({'result': 'fail', 'msg': '중복된 회원이 있습니다.'})
+            if i == user_name:
+                return jsonify({'result': 'fail', 'msg': '중복된 회원이 있습니다.'})
 
+        db.members.update_one({"id": user_name}, {"$set": {"group": team_num_receive}})
         db.teams.update_one({"num": team_num_receive}, {"$set": {"members": member_list}}, upsert=True)
         # 이제 선택한 방으로 이동
         return jsonify({'result': 'success', 'msg': '성공'})
@@ -280,20 +279,17 @@ def join_public_team() :
     except jwt.exceptions.DecodeError:
         return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
 
-
     data = db.teams.find_one({"num": team_num_receive})
+
     member_list = data['members']
-    # 중복검사 필요
     for i in member_list:
-        if (i == user_name): return jsonify({'result': 'fail', 'msg': '중복된 회원이 있습니다.'})
+        if (i == user_name):
+            return jsonify({'result': 'fail', 'msg': '중복된 회원이 있습니다.'})
+
     member_list.append(user_name)
-
+    db.members.update_one({"id": user_name}, {"$set": {"group": team_num_receive}})
     db.teams.update_one({"num": team_num_receive}, {"$set": {"members": member_list}}, upsert=True)
-    # 이제 선택한 방으로 이동
     return jsonify({'result': 'success', 'msg': '성공'})
-
-# 로그아웃 추가 필요
-
 
 @app.route('/cheer')
 def cheer():
