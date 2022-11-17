@@ -301,19 +301,18 @@ def createComment():
 
     # 쿠키 닉네임 빼와서 저장
     token_receive = request.cookies.get('mytoken')
-    print(token_receive)
     payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
     id_receive = db.members.find_one({'id': payload['id']}, {'_id': 0})
     nickname_receive = id_receive['nickname']
-    print(nickname_receive)
     num_receive = id_receive['num']
-    print(num_receive)
+    valid_receive = id_receive['num']
 
     doc = {
         'nickname':nickname_receive,
         'comment':comment_receive,
         'time':time_receive,
-        'num':num_receive
+        'num':num_receive,
+        'valid':valid_receive
     }
     db.postings.insert_one(doc)
 
@@ -332,10 +331,37 @@ def deleteComment():
 
 @app.route("/cheer/update", methods=["POST"])
 def updateComment():
+    # num_receive = request.form['num_give']
+    # comment_receive = request.form['comment_give']
+    # db.postings.update_one({'num': int(num_receive)}, {'$set': {'comment': comment_receive}})
+    # return jsonify({'msg': "수정 완료!"})
     num_receive = request.form['num_give']
     comment_receive = request.form['comment_give']
-    db.postings.update_one({'num':int(num_receive)}, {'$set': {'comment' : comment_receive}})
-    return jsonify({'msg' : "수정 완료!"})
+    userinfo = db.postings.find_one({'valid': int(num_receive)})
+
+    if userinfo['valid'] == int(num_receive):
+        db.postings.update_one({'num': int(num_receive)}, {'$set': {'comment': comment_receive}})
+        return jsonify({'result' : 'success', 'msg': "수정 완료!"})
+    else:
+        return jsonify({'result' : 'fail', 'msg' : "수정 권한이 없습니다."})
+
+    # try:
+    #     payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+    #     print(payload)
+    #
+    #     # payload 안에 id가 들어있습니다. 이 id로 유저정보를 찾습니다.
+    #     # 여기에선 그 예로 닉네임을 보내주겠습니다.
+    #     userinfo = db.members.find_one({'id': payload['id']}, {'_id': 0})
+    #     return jsonify({'result': 'success', 'num': userinfo['num']})
+    # except jwt.ExpiredSignatureError:
+    #     # 위를 실행했는데 만료시간이 지났으면 에러가 납니다.
+    #     return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
+    # except jwt.exceptions.DecodeError:
+    #     return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+
+
+
+
 
 # [유저 정보 확인 API]
 # 로그인된 유저만 call 할 수 있는 API입니다.
@@ -352,12 +378,10 @@ def commentUpdate_valid():
         # token을 시크릿키로 디코딩합니다.
         # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
         payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
-        print(payload)
 
         # payload 안에 id가 들어있습니다. 이 id로 유저정보를 찾습니다.
         # 여기에선 그 예로 닉네임을 보내주겠습니다.
         userinfo = db.members.find_one({'id': payload['id']}, {'_id': 0})
-        print(userinfo)
 
         return jsonify({'result': 'success', 'num': userinfo['num']})
     except jwt.ExpiredSignatureError:
@@ -377,13 +401,11 @@ def commentDelete_valid():
         # token을 시크릿키로 디코딩합니다.
         # 보실 수 있도록 payload를 print 해두었습니다. 우리가 로그인 시 넣은 그 payload와 같은 것이 나옵니다.
         payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
-        print(payload)
 
         # payload 안에 id가 들어있습니다. 이 id로 유저정보를 찾습니다.
         # 여기에선 그 예로 닉네임을 보내주겠습니다.
         userinfo = db.members.find_one({'id': payload['id']}, {'_id': 0})
         num_receive = userinfo['num']
-        print(num_receive)
 
         return jsonify({'result': 'success', 'num': num_receive})
     except jwt.ExpiredSignatureError:

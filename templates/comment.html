@@ -11,7 +11,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+{#    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>#}
 
     <title>오늘의 잔디</title>
 
@@ -43,10 +43,34 @@
             padding-top: 50px;
         }
 
-        .btn-primary {
-            color: white;
+        .btn-secondary {
+            color: black;
             border-color: black;
-            background-color: black;
+            background-color: #fff;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+        }
+
+        #badgeModal1 {
+            margin-right: 5px;
+            background-color: #fff;
+            border-radius: 4px;
+            border: solid #007bff 1px;
+            color: #007bff;
+        }
+
+        #badgeModal2 {
+            margin-right: 5px;
+            background-color: #fff;
+            border-radius: 4px;
+            border: solid #007bff 1px;
+            color: red;
+        }
+
+        #commentTime {
+            margin-right: 5px;
         }
 
     </style>
@@ -76,9 +100,9 @@
                                                     <div id="commentDiv">${comment}</div>
                                                     <div class="d-flex">
                                                     <div id="commentName"> ${nickname} | </div>
-                                                    <div style="font-size: 12px">${time}</div>
-                                                        <button onclick="update_comment(${num})" type="button" class="badge" id="badgeModal" data-toggle="modal" data-target="#btnModal">수정</button>
-                                                        <button onclick="delete_comment1(${num})" type="submit" class="badge">삭제</button>
+                                                    <div class="divTime" id="commentTime" style="font-size: 12px">${time}</div>
+                                                        <button onclick="update_comment(${num})" type="button" class="btn-primary" id="badgeModal1" data-toggle="modal" data-target="#btnModal">수정</button>
+                                                        <button onclick="delete_comment1(${num})" type="submit" class="btn-primary" id="badgeModal2">삭제</button>
                                                     </div>
                                                 </li>
                                                 <br />`
@@ -145,7 +169,8 @@
                     if (response['result'] == 'success' && response['num'] == num) {
                         delete_comment(num)
                     } else {
-                        alert(response['msg'])
+                        alert("삭제 권한이 없습니다.")
+                        window.location.reload()
                     }
                 }
             })
@@ -170,8 +195,13 @@
                         $('#successModal').on('click', function () {
                             update_comment1(num)
                         });
+
+                        $('#cancelModal').on('click', function () {
+                            window.location.reload()
+                        })
                     } else {
-                        alert(response['msg'])
+                        alert("수정 권한이 없습니다.")
+                        window.location.href='/cheer'
                     }
                 }
             })
@@ -191,8 +221,12 @@
                     comment_give: updateComment
                 },
                 success: function (response) {
-                    alert(response["msg"])
-                    window.location.reload()
+                    if (response['result'] == 'success') {
+                        alert(response["msg"]);
+                        window.location.reload()
+                    } else {
+                        alert(response["msg"]);
+                    }
                 }
             })
         }
