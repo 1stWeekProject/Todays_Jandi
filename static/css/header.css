@@ -9,7 +9,25 @@ body {
 .header {
     font-size: 30px;
     display: flex;
+    justify-content: space-between;
     align-items: center;
     width: 100%;
     background-color: #C5F8B3;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+}
+
+.logout_btn {
+    border: 0;
+    outline: 0;
+    background-color: #f44336;
+    color: white;
+    font-size: 20px;
+    border-radius: 10px;
+    margin-right: 16px;
+    height: 80px;
+    width: 200px;
 }
