@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>팀 잔디 현황</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="/static/css/rank.css">
+</head>
+<body>
+
+{% include 'header.html' %}
+
+<main>
+
+    <div class="rank-box">
+
+        {% for rank_info in rank_list %}
+            <div class="rank-item">
+                <div class="ranking item">{{ rank_info[0] }}등</div>
+                <div class="user-name item">{{ rank_info[1]['nickname'] }} 님</div>
+                <div class="days item">{{ rank_info[1]['commit_days'] }} 일째</div>
+            </div>
+        {% endfor %}
+    </div>
+
+</main>
+
+</body>
+</html>
