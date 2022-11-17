@@ -8,6 +8,7 @@ import certifi
 import jwt
 import hashlib
 import json
+from apscheduler.schedulers.background import BackgroundScheduler
 
 with open('config.json', 'r') as f:
     config = json.loads(f.read())
@@ -23,6 +24,48 @@ headers = {
 ca = certifi.where()
 client = MongoClient(DB_HOST, tlsCAFile=ca)
 db = client.TodaysJandi
+
+def get_daily_commit_count(github_nickname, specific_date):
+    request_url = 'https://github.com/{}'.format(github_nickname)
+    data = requests.get(request_url, headers=headers)
+    soup = BeautifulSoup(data.text, 'html.parser')
+
+    daily_commit = soup.select_one("svg.js-calendar-graph-svg rect[data-date='{}']".format(specific_date))
+    if daily_commit is None:
+        yesterday = specific_date - timedelta(1)
+        daily_commit = soup.select_one("svg.js-calendar-graph-svg rect[data-date='{}']".format(yesterday))
+
+    daily_commit_count = daily_commit['data-count']
+    return daily_commit_count
+
+
+def rank_adjust():
+    all_users = list(db.members.find({}, {'_id': False}))
+    for user in all_users:
+        nickname = user['nickname']
+        github = user['github']
+
+        continue_commit_days = 0
+        check_day = date.today() - timedelta(1)
+        while int(get_daily_commit_count(github, check_day)) > 0:
+            continue_commit_days += 1
+            check_day = check_day - timedelta(1)
+
+        data = {
+            'nickname': nickname,
+            'commit_days': continue_commit_days,
+        }
+
+        rank = db.ranks.find_one({'nickname': nickname})
+        if rank is None:
+            db.ranks.insert_one(data)
+        else:
+            db.ranks.update_one({'nickname': nickname}, {'$set': {'commit_days': continue_commit_days}})
+
+
+sched = BackgroundScheduler(daemon=True)
+sched.add_job(rank_adjust, 'interval', minutes=1)
+sched.start()
 
 app = Flask(__name__)
 
@@ -80,8 +123,9 @@ def team_info(team_id):
     GITHUB_NICKNAME_KEY = 'github'
     github_nicknames = [i[GITHUB_NICKNAME_KEY] for i in team_members]
     member_commit_counts = []
+    today = date.today()
     for github_nickname in github_nicknames:
-        commit_counts = get_daily_commit_count(github_nickname)
+        commit_counts = get_daily_commit_count(github_nickname, today)
         member_commit_counts.append(commit_counts)
 
     MEMBER_NICKNAME_KEY = 'nickname'
@@ -93,21 +137,6 @@ def team_info(team_id):
                            member_infos=member_infos,
                            team_id=team_id,
                            is_team=is_user_in_team)
-
-
-def get_daily_commit_count(github_nickname):
-    request_url = 'https://github.com/{}'.format(github_nickname)
-    data = requests.get(request_url, headers=headers)
-    soup = BeautifulSoup(data.text, 'html.parser')
-
-    today = datetime.datetime.today().strftime("%Y-%m-%d")
-    daily_commit = soup.select_one("rect[data-date='{}']".format(today))
-    if daily_commit is None:
-        yesterday = date.today() - timedelta(1)
-        daily_commit = soup.select_one("rect[data-date='{}']".format(yesterday))
-
-    daily_commit_count = daily_commit['data-count']
-    return daily_commit_count
 
 
 # [회원가입 API]
@@ -179,6 +208,28 @@ def api_duplicate():
     else:
         return jsonify({'result': 'fail', 'msg': '사용하셔도 좋은 아이디입니다.'})
 
+@app.route('/members/confirmgit', methods=["POST"])
+def api_confirmgit():
+    git_receive = request.form['github_give']
+    # id를 가져와 동일한 id를 찾습니다. 찾습니다.
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'}
+
+
+    data = requests.get('https://github.com/search?q=user:' + git_receive, headers=headers)
+
+    soup = BeautifulSoup(data.text, 'html.parser')
+
+    soup_text = soup.select('.px-2 h3')
+    confirm_text = str(soup_text)
+    print(confirm_text)
+    val = "repository" in confirm_text
+
+    if val :
+        return jsonify({'result': 'fail', 'msg': '확인됨'})
+    else:
+        return jsonify({'result': 'success', 'msg': '확인되지않음'})
+
 
 @app.route('/search_team')
 def serch_team():
@@ -199,6 +250,7 @@ def serch_team():
 
 
 
+
 # 현재 생성된 팀 정보들을 가져온다.
 @app.route('/teams/get', methods=["GET"])
 def get_teams_info():
@@ -212,7 +264,7 @@ def create_team():
     access_receive = request.form['access_give']
     teamName_receive = request.form['TeamName_give']
     teamPassword_receive = request.form['TeamPassword_give']
-    members_receive = ["member"] # 임시정보
+    members_receive = ["member"]  # 임시정보
     token_receive = request.cookies.get('mytoken')
 
     try:
@@ -240,7 +292,7 @@ def create_team():
 
 
 @app.route('/teams/join_private_team', methods=['POST'])
-def join_private_team() :
+def join_private_team():
     team_num_receive = int(request.form['team_num_give'])
     password_receive = request.form['password_give']
     token_receive = request.cookies.get('mytoken')
@@ -277,6 +329,7 @@ def join_private_team() :
 
 # 팀에 참가한다.
 @app.route('/teams/join_public_team', methods=['POST'])
+
 def join_public_team() :
     team_num_receive = int(request.form['team_num_give'])
     token_receive = request.cookies.get('mytoken')
@@ -305,9 +358,11 @@ def join_public_team() :
     db.teams.update_one({"num": team_num_receive}, {"$set": {"members": member_list}}, upsert=True)
     return jsonify({'result': 'success', 'msg': '성공'})
 
+
 @app.route('/cheer')
 def cheer():
     return render_template('comment.html')
+
 
 @app.route("/cheer/create", methods=["POST"])
 def createComment():
@@ -333,19 +388,21 @@ def createComment():
         'valid':valid_receive
     }
     db.postings.insert_one(doc)
-
     return jsonify({'msg':'작성 완료'})
+
 
 @app.route("/cheer/read", methods=["GET"])
 def readComment():
     jandiComment_list = list(db.postings.find({}, {'_id':False}))
     return jsonify({'jandi_comment':jandiComment_list})
 
+
 @app.route("/cheer/delete", methods=["POST"])
 def deleteComment():
     num_receive = request.form['num_give']
     db.postings.delete_one({'num': int(num_receive)})
     return jsonify({'msg' : "삭제 완료!"})
+
 
 @app.route("/cheer/update", methods=["POST"])
 def updateComment():
@@ -356,9 +413,11 @@ def updateComment():
     num_receive = request.form['num_give']
     comment_receive = request.form['comment_give']
     userinfo = db.postings.find_one({'valid': int(num_receive)})
+    now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     if userinfo['valid'] == int(num_receive):
         db.postings.update_one({'num': int(num_receive)}, {'$set': {'comment': comment_receive}})
+        db.postings.update_one({'num': int(num_receive)}, {'$set': {'time': now}})
         return jsonify({'result' : 'success', 'msg': "수정 완료!"})
     else:
         return jsonify({'result' : 'fail', 'msg' : "수정 권한이 없습니다."})
@@ -376,8 +435,6 @@ def updateComment():
     #     return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
     # except jwt.exceptions.DecodeError:
     #     return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
-
-
 
 
 
@@ -408,6 +465,7 @@ def commentUpdate_valid():
     except jwt.exceptions.DecodeError:
         return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
 
+
 @app.route('/cheer/delete', methods=['GET'])
 def commentDelete_valid():
     token_receive = request.cookies.get('mytoken')
@@ -431,6 +489,17 @@ def commentDelete_valid():
         return jsonify({'result': 'fail', 'msg': '로그인 시간이 만료되었습니다.'})
     except jwt.exceptions.DecodeError:
         return jsonify({'result': 'fail', 'msg': '로그인 정보가 존재하지 않습니다.'})
+
+
+
+@app.route("/ranks", methods=["GET"])
+def ranks():
+    rank_list = list(db.ranks.find().sort('commit_days', -1).limit(10))
+    idxs = []
+    for i in range(len(rank_list)):
+        idxs.append(i + 1)
+    return render_template('rank.html', rank_list=zip(idxs, rank_list))
+
 
 if __name__ == '__main__':
     app.run('0.0.0.0', port=8080, debug=True)

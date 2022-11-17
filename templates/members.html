@@ -56,12 +56,12 @@
             text-align : center;
             flex-direction: row;
             flex-wrap : wrap;
-
+            margin-top : 200px;
+            margin-left : 50px;
         }
         #login_header{
             font-family : Black Han Sans;
             text-align : center;
-            margin-top : 80px;
             width : 100%;
             font-size : 2.5em
         }
@@ -197,6 +197,8 @@
             transition: background 1s ease-out;
         }
 
+
+
             #btn_reg{
                 display : inline-block;
                 width : 50%;
@@ -204,6 +206,7 @@
                 float : left;
                 margin-top : 10px;
                 text-align : center;
+                display : none;
 
             }
 
@@ -230,6 +233,18 @@
                 margin-top : 10px;
                 text-align : center;
             }
+
+            #confirm{
+                 display : inline-block;
+                font-size :12px;
+                width : content-box;
+                height : content-box;
+                  font-family : "NanumGothic";
+               color : black ;
+               background-color : silver;
+                border : none;
+               border-radius : 5px;
+            }
             #btn_close >button{
                 font-family : "NanumGothic";
                 width : 30%;
@@ -246,6 +261,18 @@
             /* 변형할 것은 배경 1초, 빠른 시작 서서히 감속*/
             transition: background 1s ease-out;
         }
+
+             .err_id{
+                 width: fit-content;
+                 height : fit-content;
+                 color : red;
+                 font-size : 0.2em;
+                 display : block;
+             }
+
+             #err_id{
+                 display : none;
+             }
 
     </style>
     <script>
@@ -265,6 +292,7 @@
                             join.style.display = "none";
                             let overlay = document.getElementById('overlay');
                             overlay.style.display = "none   ";
+                            init();
 
         }
 
@@ -275,28 +303,34 @@
         //                                 //
         //                                 //
          function register() {
+             let r_id = document.getElementById('r_id');
+             let r_pw = document.getElementById('r_pw');
+             let pw_check = document.getElementById('pw_check');
+             let git_id = document.getElementById('git_id');
+             let nickname = document.getElementById('nickname');
 
-                $.ajax({
-                    type: "POST",
-                    url: "/members/join",
-                    data: {
-                        id_give: $('#r_id').val(),
-                        pw_give: $('#r_pw').val(),
-                        github_give: $('#git_id').val(),
-                        nickname_give : $('#nickname').val()
-                    },
+                 $.ajax({
+                     type: "POST",
+                     url: "/members/join",
+                     data: {
+                         id_give: $('#r_id').val(),
+                         pw_give: $('#r_pw').val(),
+                         github_give: $('#git_id').val(),
+                         nickname_give: $('#nickname').val()
+                     },
 
-                    success: function (response) {
-                        if (response['result'] == 'success') {
-                            alert('회원가입이 완료되었습니다.');
-                            init();
-                            close_join();
-                        } else {
-                            alert(response['msg'])
-                        }
-                    }
-                })
-        }
+                     success: function (response) {
+                         if (response['result'] == 'success') {
+                             alert('회원가입이 완료되었습니다.');
+                             init();
+                             close_join();
+                         } else {
+                             alert(response['msg'])
+                         }
+                     }
+                 })
+
+         }
 
         function login(){
             $.ajax({
@@ -318,11 +352,11 @@
                         } else {
                             // 로그인이 안되면 에러메시지를 띄웁니다.
                             alert(response['msg'])
-
                         }
                     }
                 })
         }
+
 
         //                                 //
         //    회원가입 제한용        함수 자리 //
@@ -332,7 +366,7 @@
         // 아 이거 전역변수 boolean 타입 하나 주고 그걸로 state 파악해서
         // 해당 칸 blur할때 마다 전역변수에 return 해서 마지막 에 true or false 로 작성했으면 좋았을텐데
         // 훨씬더 가독성 있는 코드가 되었을 것 같은데 .. 왜 그생각을 못했을까.. 내가 너무 밉다.
-        // 조진것 같다 시말서 각이다. 지금 와서 다시짜긴 그른것 같다.
+        // 조진것 같다 시말서 각이다. 권고퇴직 각이다. 지금 와서 다시짜긴 그른것 같다.
         // 생각하고 코딩하는 버릇을 길러야할것 같다 이게 시장판인지 스크립트인지 이젠 잘 모르겟다
 
         function init(){
@@ -342,17 +376,21 @@
          let git_id = document.getElementById('git_id');
          let nickname = document.getElementById('nickname');
           let btn_dupli = document.getElementById('duplicate');
+          let btn_confirm = document.getElementById('confirm');
           let err_span = document.getElementById('err_span');
+          let confirm_span = document.getElementById('confirm_span');
 
          r_id.value = null;
          r_pw.value = null;
          pw_check.value = null;
          git_id.value =  null;
          nickname.value = null;
-         err_span.value = null;
-    console.log("init 실행되었습니다1.")
+         err_span.innerText = null;
+         confirm_span.innerText = null;
+       console.log("init 실행되었습니다1.")
           able();
             btn_dupli.style.display ="inline-block";
+            btn_confirm.style.display ="inline-block";
             console.log("init 실행되었습니다2.")
         }
 
@@ -397,14 +435,48 @@
      // 중복아이디를 찾는 함수입니다. ajax를 통해 post 요청으로 서버측에 보낸뒤 서버측에
         // db call > findone을 통해 result를 가져오는지 판단한후 상태에따른 msg를 반환하여 alert 처리 쏩니다
 
-        //추가수정) 사용자가 다시 id를 변경할떄 를 제어를 안했습니다.
+        //추가수정) 사용자가 다시 id를 변경할떄 를 제어를 안했습니다. 후술할 id_change 메소드를 만들어 제어 하였습니다.
 
+        function confirm(){
+            $.ajax({
+                    type: "POST",
+                    url: "/members/confirmgit",
+                    data: {github_give: $('#git_id').val()},
+                    success: function (response) {
+                        if (response['result'] == 'fail') {
+                            // git 가입한 아이디가 있다면 result를 fail로 받아옵니다.
+                            // fail를 받아올경우 확인 이라는 confirm 메세지를 담긴 msg를 alert합니다.
+                              able();
+                            let confirm_span = document.getElementById('confirm_span');
+                            confirm_span.innerText = response['msg']
+                            confirm_span.style.color = "blue";
+
+
+                        } else {
+                            // 가입한 아이디가 있다면 result를 success로 받아옵니다.
+                            // success을 받아올 경우 사용하셔되된다는 msg를 alert합니다.
+
+                               let confirm_span = document.getElementById('confirm_span');
+                            confirm_span.innerText = response['msg']
+                            confirm_span.style.color = "red";
+
+                            disable();
+                        }
+                    }
+                })
+        }
+
+            // 조원분이 추가기능을 추가 해달라하셔서 긴급하게 추가했습니다. 다만들고 나서 생각하니. 너무 좋은 주제인것같습니다.
+        // 소셜로그인을 구현 하기엔 시간이 없어
+        // 간단히 github web을 bs4로 파싱해서 제어했습니당.
+
+        //추가수정) 사용자가 다시 id를 변경할떄 를 제어를 안했습니다. 후술할 id_change 메소드를 만들어 제어 하였습니다.
         function id_change(){
               let btn_dupli = document.getElementById('duplicate');
             btn_dupli.style.display ="inline-block";
             disable();
             //id 값에 onchange event를 추가하여 초기화 하면 될것같습니다.
-
+            // css 떄문에 inline-block 설정합니다.
         }
 
 
@@ -423,6 +495,7 @@ function compare() {
 
             } else if (pw_check.value == null || r_pw.value == null) {
                 err_span.innerText = "";
+                 disable();
             } else {
                 err_span.innerText = "입력한 비밀번호와 다릅니다."
                 err_span.style.color = "red";
@@ -437,6 +510,34 @@ function compare() {
         // 이방법은 기존 css 를 건들이고 바디단에 z-index를 설정하기때문에 개인적으로 가독성이 떨어져 전자로 처리하였습니다.
 
 
+        let alert_msg ="";
+function null_check(){
+
+            let r_id = document.getElementById('r_id');
+         let r_pw = document.getElementById('r_pw');
+         let pw_check = document.getElementById('pw_check');
+         let git_id = document.getElementById('git_id');
+         let nickname = document.getElementById('nickname');
+         let err_span = document.getElementById('err_span');
+         let confirm_span = document.getElementById('confirm_span');
+
+    if (r_id.value==null ||
+        r_pw.value==null ||
+        pw_check.value== null ||
+        git_id.value== null ||
+        nickname.value == null ){
+        alert_msg ="빈곳이 없는 지 확인해주세요" ;
+        return alert_msg;
+    }else if(confirm_span.innerText="확인되지않음"){
+        alert_msg ="git ID를 다시 확인해주세요"
+        return alert_msg;
+    }else{
+        alert_msg = "OK"
+        return alert_msg;
+    }
+        }
+
+
         $(document).ready(function () {
             let r_pw = document.getElementById('r_pw');
             r_pw.addEventListener("blur", function (event) {
@@ -448,10 +549,16 @@ function compare() {
             })
             let r_id = document.getElementById('r_id');
            r_id.addEventListener("change", function (event) {
+
                 id_change();
             })
+            let git_id = document.getElementById('git_id');
+           git_id.addEventListener("focus",function(event){
+               let btn_confirm = document.getElementById('confirm');
+               btn_confirm.style.display = "inline-box";
+           })
         });
-
+  //display ="none" 을 제어 할려고 DOM Tree 다 구현 하고 함수 호출
     </script>
 </head>
 <body>
@@ -459,24 +566,28 @@ function compare() {
 </div>
 <div id="join">
         <img id="join_header" src="https://velog.velcdn.com/images%2Fscoles1%2Fpost%2Fea1e84fa-d8ae-47bd-956b-299b727c070f%2F%E1%84%80%E1%85%B5%E1%86%BA%E1%84%8C%E1%85%A1%E1%86%AB%E1%84%83%E1%85%B5.png">
-    <div>
+    <div class="input">
         <span class="input_front">아이디</span>
         <input type="text" id="r_id" placeholder="아이디를 입력해주세요">
         <button id="duplicate" onclick="duplicate()">중복확인</button>
     </div>
-    <div>
+
+    <div class="input">
         <span class="input_front">비밀번호</span>
         <input type="password" id="r_pw" placeholder="비밀번호를 입력해주세요">
+
     </div>
-    <div>
+
+    <div class="input">
         <span class="input_front">비밀번호확인</span>
         <input type="password" id="pw_check" placeholder="비밀번호를 다시 입력해주세요"><span id="err_span"></span>
     </div>
-    <div>
+    <div class="input">
         <span class="input_front">GITHUB ID</span>
         <input type="text" id="git_id" placeholder="github를 입력해주세요">
+        <button id="confirm" onclick="confirm()">gitID 확인</button><span id="confirm_span"></span>
     </div>
-    <div>
+    <div class="input">
         <span class="input_front">닉네임</span>
         <input type="text" id="nickname" placeholder="닉네임을 입력해주세요">
     </div>
