@@ -12,24 +12,25 @@
 
 <main>
     {% for info in member_infos %}
-    <div class="grass">
-        <div class="user">
-            <div class="user-info">
-                <span class="user-nickname">{{ info[0] }}</span>님의 잔디밭
+        <div class="grass">
+            <div class="user">
+                <div class="user-info">
+                    <span class="user-nickname">{{ info[0] }}</span>님의 잔디밭
+                </div>
+                <div class="commit-info">
+                    오늘 <span class="commit-count">{{ info[1] }}</span>번 커밋 했어요!
+                </div>
             </div>
-            <div class="commit-info">
-                오늘 <span class="commit-count">{{ info[1] }}</span>번 커밋 했어요!
+            <div class="grass-info">
+                <img class="user-grass" src="https://ghchart.rshah.org/{{ info[2] }}">
             </div>
         </div>
-        <div class="grass-info">
-            <img class="user-grass" src="https://ghchart.rshah.org/{{ info[2] }}">
-        </div>
-    </div>
     {% endfor %}
-
-    <div class="button-box">
-        <button class="button" onclick="withdrawl()">팀 나가기</button>
-    </div>
+    {% if is_team %}
+        <div class="button-box">
+            <button class="button" onclick="withdrawl()">팀 나가기</button>
+        </div>
+    {% endif %}
 </main>
 <script>
     function withdrawl() {
@@ -42,11 +43,10 @@
             },
             success: function (response) {
                 alert('팀 탈퇴 성공!');
-                $(location).attr('href', '/')
+                $(location).attr('href', '/search_team')
             }
         });
     }
-
 </script>
 </body>
 </html>

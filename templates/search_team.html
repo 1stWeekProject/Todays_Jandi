@@ -6,6 +6,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.js"></script>
 
     <meta charset="UTF-8">
     <title>팀 참가하기</title>
@@ -19,9 +20,25 @@
         .header {
             font-size: 30px;
             display: flex;
+            justify-content: space-between;
             align-items: center;
             width: 100%;
             background-color: #C5F8B3;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        .logout_btn {
+            border: 0;
+            outline: 0;
+            background-color: #f44336;
+            color: white;
+            font-size: 20px;
+            border-radius: 10px;
+            margin-right: 16px;
+            height: 80px;
+            width: 200px;
         }
         .teamList {
             display: flex;
@@ -123,10 +140,16 @@
     </style>
 
     <script>
+        let clickedID = 0;
         $(document).ready(function () {
             show_teams();
         });
 
+        function logout(){
+            $.removeCookie('mytoken');
+            alert('로그아웃!');
+            window.location.href = '/';
+        }
         function show_teams() {
             $.ajax({
                 type: 'GET',
@@ -136,16 +159,18 @@
                     let rows = response['teams']
                     console.log(rows)
                     for (let i = 0; i < rows.length; i++) {
+                        let num = rows[i]['num'];
                         let team_name = rows[i]['TeamName'];
                         let team_password = rows[i]['TeamPassword'];
                         let access = (rows[i]['access'] == "public") ? "PublicTeamImg" : "privateTeamImg";
                         let members = rows[i]['members'].length;
 
+                        let actFunction = (rows[i]['access'] == "public") ? "join_public_team(this.id)" : "show_join_pop_up(this.id)"
                         let temp_html = `<div class="teamInfo">
                                             <img src="/static/${access}.png">
                                             <p style="word-break: normal">${team_name}</p>
                                             <p>${members}명</p>
-                                            <button class="teamJoinBtn" onclick="show_join_pop_up()">팀 참가하기</button>
+                                            <button id="${num}" class="teamJoinBtn" onclick="${actFunction}">팀 참가하기</button>
                                         </div>`
                         $('.teamList').append(temp_html);
                     }
@@ -178,7 +203,7 @@
             passwordCheck.style.display = "block"
         }
 
-        function save_team() {
+        function create_team() {
             var access = $('input[name="access"]:checked').val();
             let teamName = $('#teamName').val();
             let teamPassword = (access == 'public') ? "" : $('#passwordForm').val();
@@ -191,7 +216,7 @@
                 data: {access_give: access, TeamName_give: teamName, TeamPassword_give: teamPassword},
                 success: function (response) {
                     alert(response['msg'])
-                    window.location.reload();
+                    window.location.href = '/teams/grasses/' + response['num'];
                 }
             });
             } else { // 비밀번호를 잘못입력했는지 확인
@@ -199,7 +224,9 @@
             }
         }
 
-        function show_join_pop_up () {
+        function show_join_pop_up (clicked) {
+            clicked_id = clicked;
+            console.log(clicked_id);
             document.getElementById("join_team_popup").className = "background show";
         }
 
@@ -207,12 +234,47 @@
             document.getElementById("join_team_popup").className = "background";
         }
 
+        function join_private_team() {
+            let team_num = clicked_id
+            let password = $('#team_password').val();
+            $.ajax({
+                type: 'POST',
+                url: '/teams/join_private_team',
+                data: {team_num_give: team_num, password_give: password},
+                success: function (response) {
+                    //화면 이동 메소드 추가 필요
+                    if (response['result'] == 'fail') {
+                        alert(response['msg']);
+                    } else if (response['result'] == 'success') {
+                        window.location.href = '/teams/grasses/' + team_num;
+                    }
+                }
+            })
+        }
+
+        function join_public_team(clicked) {
+            clicked_id = clicked;
+            let team_num = clicked_id;
+            $.ajax({
+                type: 'POST',
+                url: 'teams/join_public_team',
+                data: {team_num_give: team_num},
+                success: function (response) {
+                    window.location.href = '/teams/grasses/' + team_num;
+                }
+            })
+        }
     </script>
 </head>
 <body>
 <div class="header">
-    <img src="/static/Jandi-logo.png" style="margin-right: 30px">
-    <h1>오늘의 잔디</h1>
+    <div class="logo">
+        <img src="/static/Jandi-logo.png" style="margin-right: 30px">
+        <h1>오늘의 잔디</h1>
+    </div>
+    <div>
+        <button class="logout_btn" onclick="logout()">로그아웃</button>
+    </div>
 </div>
 
 <div class="teamList">
@@ -248,7 +310,7 @@
                 </div>
 
                 <div class="modalItems">
-                    <button class="modalBtn" style="background-color: #35D34E" onclick="save_team()">팀 만들기!</button>
+                    <button class="modalBtn" style="background-color: #35D34E" onclick="create_team()">팀 만들기!</button>
                     <button class="modalBtn" style="background-color: #033821" onclick="close_pop_up()">취소</button>
                 </div>
             </div>
@@ -266,9 +328,9 @@
                     </p>
                 </div>
                 <div style="height: 100px;display: flex; flex-direction: column; justify-content: center; align-items : center;">
-                    <input id="join_password" type="password" name="UserID" style="margin-top: 15px; height: 30px; width: 400px" placeholder="비밀번호">
+                    <input id="team_password" type="password" name="TeamPassword" style="margin-top: 15px; height: 30px; width: 400px" placeholder="비밀번호를 입력해주세요~">
                     <div style="width: 300px; margin-top: 5px; display: flex; flex-direction: row; justify-content: space-between">
-                        <button style="outline: 0; border-radius: 10px; height: 30px; width: 120px; border: 0; color: white; background-color: #35D34E">입장하기!</button>
+                        <button onclick="join_private_team()" style="outline: 0; border-radius: 10px; height: 30px; width: 120px; border: 0; color: white; background-color: #35D34E">입장하기!</button>
                         <button onclick="close_join_pop_up()" style="outline: 0; border-radius: 10px; height: 30px; width: 120px; border: 0; color: white; background-color: orangered">취소!</button>
                     </div>
                 </div>
